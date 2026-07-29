@@ -1,4 +1,4 @@
-# api/scheduling.py - FIXED VERSION with Timezone Handling
+# api/scheduling.py - COMPLETE FIXED VERSION
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
@@ -6,8 +6,8 @@ from datetime import datetime, date, time, timedelta
 from typing import Optional, List, Dict, Any
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, update
-import pytz  # ← ADD THIS
-from app.models import User  # ← ADD IMPORT
+import pytz
+from app.models import User
 from services.whatsapp_service import get_whatsapp_service
 
 from app.database import get_db
@@ -46,9 +46,7 @@ class BookingRequest(BaseModel):
 # ============ GET CALENDAR INFO ============
 @router.get("/calendar-info")
 async def get_calendar_info():
-    """
-    Get the current calendar ID, name, and status
-    """
+    """Get the current calendar ID, name, and status"""
     calendar = CalendarService()
     
     calendar_name = "FARE AutoSpect - DI Health"
@@ -69,22 +67,7 @@ async def get_calendar_info():
         "is_authenticated": calendar.service is not None,
         "status": "connected" if calendar.service else "disconnected"
     }
-whatsapp = get_whatsapp_service()
 
-# Send confirmation
-confirm_success = whatsapp.send_booking_confirmation(
-    to_number=case.phone_number,
-    case_id=case.case_id,
-    name=case.name,
-    meeting_date=start_time,  # Use the timezone-aware datetime
-    meeting_link=meet_link,
-    claim_id=case.claim_id
-)
-
-if confirm_success:
-    print(f"✅ WhatsApp confirmation sent for {case.case_id}")
-else:
-    print(f"⚠️ Failed to send WhatsApp confirmation for {case.case_id}")
 # ============ GET AVAILABLE SLOTS ============
 @router.get("/slots")
 async def get_available_slots(
@@ -92,9 +75,7 @@ async def get_available_slots(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user) 
 ):
-    """
-    Get available time slots with metadata
-    """
+    """Get available time slots with metadata"""
     try:
         target_date = datetime.strptime(slot_date, "%Y-%m-%d").date()
         
@@ -123,7 +104,6 @@ async def get_available_slots(
         
         result = await db.execute(
             select(ScheduledSlot).where(
-                DICase.user_id == current_user.id,  # ← ADD THIS
                 ScheduledSlot.slot_date == target_date,
                 ScheduledSlot.status == "booked"
             )
@@ -162,11 +142,11 @@ async def book_meeting(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    """Book a meeting with proper timezone handling"""
+    """Book a meeting with proper timezone handling and WhatsApp notification"""
     try:
         # 1. Get case
         result = await db.execute(
-            select(DICase).where(DICase.case_id == request.case_id,DICase.user_id == current_user.id)
+            select(DICase).where(DICase.case_id == request.case_id, DICase.user_id == current_user.id)
         )
         case = result.scalar_one_or_none()
         
@@ -180,10 +160,10 @@ async def book_meeting(
         slot_date = datetime.strptime(request.slot_date, "%Y-%m-%d").date()
         slot_time = datetime.strptime(request.slot_time, "%H:%M").time()
         
-        # ✅ FIX: Create timezone-aware datetime
+        # Create timezone-aware datetime
         tz = get_indian_timezone()
         start_time = datetime.combine(slot_date, slot_time)
-        start_time = tz.localize(start_time)  # Make timezone-aware
+        start_time = tz.localize(start_time)
         end_time = start_time + timedelta(minutes=request.duration_minutes)
         
         # 3. Check if slot is already booked in calendar
@@ -194,20 +174,16 @@ async def book_meeting(
         
         busy_times = await calendar.get_busy_times(slot_date)
         
-        # ✅ FIX: Convert busy times to timezone-aware for comparison
         for busy_start, busy_end, _, _, _ in busy_times:
-            # Ensure busy times are timezone-aware
             if busy_start.tzinfo is None:
                 busy_start = tz.localize(busy_start)
             if busy_end.tzinfo is None:
                 busy_end = tz.localize(busy_end)
             
-            # Check for overlap
             if not (end_time <= busy_start or start_time >= busy_end):
                 raise HTTPException(400, "This slot is already booked in calendar")
         
         # 4. Create event in calendar
-        # Use naive times for calendar API
         start_naive = make_timezone_naive(start_time)
         end_naive = make_timezone_naive(end_time)
         
@@ -238,16 +214,38 @@ async def book_meeting(
         case.status = "scheduled"
         case.meeting_link = meet_link
         case.event_id = event_id
-        case.scheduled_time = start_naive  # Store naive in DB
+        case.scheduled_time = start_naive
         
         await db.commit()
+        
+        # ============================================================
+        # ✅ SEND WHATSAPP CONFIRMATION
+        # ============================================================
+        try:
+            whatsapp = get_whatsapp_service()
+            confirm_success = whatsapp.send_booking_confirmation(
+                to_number=case.phone_number,
+                case_id=case.case_id,
+                name=case.name,
+                meeting_date=start_time,
+                meeting_link=meet_link,
+                claim_id=case.claim_id
+            )
+            
+            if confirm_success:
+                print(f"✅ WhatsApp confirmation sent for {case.case_id}")
+            else:
+                print(f"⚠️ Failed to send WhatsApp confirmation for {case.case_id}")
+        except Exception as whatsapp_error:
+            print(f"⚠️ WhatsApp error: {whatsapp_error}")
+            # Don't fail the booking if WhatsApp fails
         
         return {
             "message": "Meeting scheduled successfully",
             "meet_link": meet_link,
             "event_id": event_id,
             "case_id": case.case_id,
-            "scheduled_time": start_time.isoformat()  # Return ISO with timezone
+            "scheduled_time": start_time.isoformat()
         }
         
     except HTTPException:
