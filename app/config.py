@@ -13,7 +13,11 @@ class Settings(BaseSettings):
     # Database
     DATABASE_URL: Optional[str] = None
     DB_TYPE: str = "postgresql"
-
+    WHATSAPP_API_URL: str = "https://graph.facebook.com/v25.0"
+    WHATSAPP_ACCESS_TOKEN: Optional[str] = None
+    WHATSAPP_PHONE_NUMBER_ID: Optional[str] = None
+    WHATSAPP_VERIFY_TOKEN: Optional[str] = None
+    WEBHOOK_BASE_URL: str = "http://13.201.194.47:8000"
     # RDS Configuration
     RDS_HOST: Optional[str] = None
     RDS_PORT: str = "5432"

@@ -8,6 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, update
 import pytz  # ← ADD THIS
 from app.models import User  # ← ADD IMPORT
+from services.whatsapp_service import get_whatsapp_service
 
 from app.database import get_db
 from app.models import DICase, ScheduledSlot
@@ -68,7 +69,22 @@ async def get_calendar_info():
         "is_authenticated": calendar.service is not None,
         "status": "connected" if calendar.service else "disconnected"
     }
+whatsapp = get_whatsapp_service()
 
+# Send confirmation
+confirm_success = whatsapp.send_booking_confirmation(
+    to_number=case.phone_number,
+    case_id=case.case_id,
+    name=case.name,
+    meeting_date=start_time,  # Use the timezone-aware datetime
+    meeting_link=meet_link,
+    claim_id=case.claim_id
+)
+
+if confirm_success:
+    print(f"✅ WhatsApp confirmation sent for {case.case_id}")
+else:
+    print(f"⚠️ Failed to send WhatsApp confirmation for {case.case_id}")
 # ============ GET AVAILABLE SLOTS ============
 @router.get("/slots")
 async def get_available_slots(
