@@ -1,0 +1,80 @@
+﻿# Python
+__pycache__/
+*.py[cod]
+*.class
+*.so
+.Python
+env/
+venv/
+ENV/
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Database
+*.db
+*.sqlite
+*.sqlite3
+
+# Environment files
+.env
+.env.local
+.env.*.local
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Logs
+*.log
+logs/
+error_logs/
+
+# Uploads
+uploads/
+!uploads/.gitkeep
+
+# Authentication tokens
+*.pickle
+*.pkl
+credentials.json
+token_*.pickle
+oauth_*.json
+*.key
+*.pem
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Docker
+*.pid
+*.pid.lock
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# AWS
+.pem
+.pub

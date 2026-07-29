@@ -1,0 +1,45 @@
+DI-Health/
+├── api/
+│   ├── __init__.py
+│   ├── cases.py           # Case CRUD endpoints
+│   ├── documents.py       # Document management
+│   ├── scheduling.py      # Calendar & Meet links
+│   └── webhooks.py        # WhatsApp webhook
+├── app/
+│   ├── __init__.py
+│   ├── config.py          # Environment config
+│   ├── database.py        # DB connection
+│   ├── models.py          # SQLAlchemy models
+│   └── dependencies.py    # Auth, common deps
+├── database/
+│   ├── __init__.py
+│   ├── schema.sql         # PostgreSQL schema
+│   └── migrations/        # Alembic migrations
+├── services/
+│   ├── __init__.py
+│   ├── drive_service.py   # Google Drive operations
+│   ├── calendar_service.py # Google Calendar + Meet
+│   ├── whatsapp_service.py # WhatsApp Business API
+│   ├── transcription.py   # Video to text (Gemini)
+│   └── report_generator.py # DOCX report generation
+├── static/
+│   ├── css/
+│   │   └── style.css
+│   ├── js/
+│   │   ├── dashboard.js
+│   │   ├── case_details.js
+│   │   ├── scheduling.js
+│   │   └── websocket.js
+│   ├── index.html         # Main dashboard
+│   ├── case_detail.html   # Case details page
+│   ├── login.html
+│   └── images/
+├── utils/
+│   ├── __init__.py
+│   ├── logger.py
+│   ├── validators.py
+│   └── helpers.py
+├── requirements.txt
+├── .env.example
+├── main.py                # FastAPI entry point
+└── Dockerfile (optional)   

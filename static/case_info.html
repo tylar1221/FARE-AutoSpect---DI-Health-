@@ -1,0 +1,1541 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DI Health — Case Information</title>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600;9..40,700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
+    <style>
+        *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+        :root {
+            --ink:        #0f1419;
+            --ink-mid:    #374151;
+            --ink-soft:   #6b7280;
+            --ink-muted:  #9ca3af;
+            --surface:    #ffffff;
+            --surface-2:  #f8f9fb;
+            --surface-3:  #f1f3f7;
+            --border:     #e4e7ec;
+            --border-2:   #d1d5db;
+            --blue:       #1d4ed8;
+            --blue-light: #3b82f6;
+            --blue-dim:   #eff6ff;
+            --blue-soft:  #bfdbfe;
+            --green:      #16a34a;
+            --green-dim:  #f0fdf4;
+            --green-soft: #bbf7d0;
+            --purple:     #7c3aed;
+            --purple-dim: #f5f3ff;
+            --purple-soft:#ddd6fe;
+            --red:        #dc2626;
+            --red-dim:    #fef2f2;
+            --amber:      #d97706;
+            --amber-dim:  #fffbeb;
+            --radius:     16px;
+            --radius-sm:  10px;
+        }
+
+        html, body {
+            height: 100%;
+            font-family: 'DM Sans', system-ui, sans-serif;
+            background: var(--surface-2);
+            color: var(--ink);
+        }
+
+        /* Toast Styles */
+        .toast {
+            position: fixed;
+            bottom: 24px;
+            right: 24px;
+            padding: 12px 20px;
+            border-radius: 12px;
+            color: white;
+            z-index: 1100;
+            animation: slideIn 0.3s ease;
+            font-size: 0.85rem;
+            font-weight: 500;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        }
+        .toast-success { background: var(--green); }
+        .toast-error { background: var(--red); }
+        .toast-info { background: var(--blue); }
+
+        @keyframes slideIn {
+            from { transform: translateY(30px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+
+        header {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 64px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 26px;
+            background: rgba(255,255,255,0.92);
+            backdrop-filter: blur(12px);
+            border-bottom: 1px solid var(--border);
+            z-index: 100;
+            box-shadow: 0 1px 0 var(--border), 0 4px 20px rgba(0,0,0,0.03);
+        }
+
+        .logo-group {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .top-logo {
+            height: 42px;
+            width: auto;
+            object-fit: contain;
+            display: block;
+        }
+
+        .brand-text {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+
+        .logo-name {
+            font-family: 'DM Serif Display', serif;
+            font-size: 1.15rem;
+            line-height: 1;
+            color: var(--ink);
+        }
+
+        .logo-sub {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.58rem;
+            letter-spacing: 1.8px;
+            text-transform: uppercase;
+            color: var(--ink-muted);
+            margin-top: 4px;
+        }
+
+        .header-right {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .user-info {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            background: var(--surface-2);
+            padding: 5px 12px;
+            border-radius: 30px;
+            border: 1px solid var(--border);
+        }
+
+        .user-avatar {
+            width: 30px;
+            height: 30px;
+            background: var(--blue-dim);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            color: var(--blue);
+        }
+
+        .user-name {
+            font-size: 0.8rem;
+            font-weight: 500;
+        }
+
+        .back-link {
+            background: rgba(0,0,0,0.05);
+            border: none;
+            cursor: pointer;
+            color: var(--ink-mid);
+            font-size: 0.8rem;
+            padding: 6px 14px;
+            border-radius: 8px;
+            transition: all 0.2s;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .back-link:hover {
+            background: var(--surface-3);
+            color: var(--ink);
+        }
+
+        .logout-btn {
+            background: none;
+            border: none;
+            cursor: pointer;
+            color: var(--ink-muted);
+            font-size: 0.75rem;
+            padding: 4px 8px;
+            border-radius: 6px;
+            transition: all 0.2s;
+        }
+
+        .logout-btn:hover {
+            background: var(--red-dim);
+            color: var(--red);
+        }
+
+        .status-chip {
+            display: flex;
+            align-items: center;
+            gap: 7px;
+            padding: 5px 13px;
+            background: var(--green-dim);
+            border: 1px solid rgba(22,163,74,0.2);
+            border-radius: 30px;
+            font-size: 0.74rem;
+            font-weight: 500;
+            color: var(--green);
+        }
+
+        .status-dot {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: var(--green);
+            animation: pulse 2.2s ease-in-out infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.45; transform: scale(1.45); }
+        }
+
+        .date-chip {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.68rem;
+            color: var(--blue);
+            background: var(--blue-dim);
+            border: 1px solid rgba(29,78,216,0.18);
+            padding: 4px 12px;
+            border-radius: 6px;
+            letter-spacing: 0.4px;
+        }
+
+        .page {
+            min-height: 100vh;
+            padding-top: 64px;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 32px 24px;
+            width: 100%;
+        }
+
+        .two-columns {
+            display: flex;
+            gap: 30px;
+            flex-wrap: wrap;
+        }
+        .column {
+            flex: 1;
+            min-width: 300px;
+        }
+
+        .card {
+            background: var(--surface);
+            border-radius: var(--radius);
+            border: 1px solid var(--border);
+            overflow: hidden;
+            margin-bottom: 24px;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.04);
+        }
+
+        .card-header {
+            padding: 16px 20px;
+            background: var(--surface-2);
+            border-bottom: 1px solid var(--border);
+            font-weight: 600;
+            font-size: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .card-body {
+            padding: 20px;
+        }
+
+        .info-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 16px;
+        }
+
+        .info-item {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .info-label {
+            font-size: 0.7rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: var(--ink-muted);
+            font-weight: 600;
+        }
+
+        .info-value {
+            font-size: 0.9rem;
+            color: var(--ink);
+            word-break: break-word;
+        }
+
+        .status-badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 0.7rem;
+            font-weight: 600;
+        }
+        .status-pending { background: var(--amber-dim); color: var(--amber); }
+        .status-scheduled { background: var(--blue-dim); color: var(--blue); }
+        .status-completed { background: var(--green-dim); color: var(--green); }
+
+        /* ===== DOCUMENT GRID ===== */
+        .doc-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+            gap: 12px;
+            margin-top: 10px;
+        }
+
+        .doc-card {
+            background: var(--surface-2);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 14px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            transition: all 0.2s;
+            cursor: pointer;
+        }
+
+        .doc-card:hover {
+            background: var(--blue-dim);
+            border-color: var(--blue-soft);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.06);
+        }
+
+        .doc-preview {
+            width: 100%;
+            height: 120px;
+            background: var(--surface);
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2.5rem;
+            color: var(--ink-muted);
+            border: 1px solid var(--border);
+            overflow: hidden;
+        }
+
+        .doc-preview img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .doc-preview .doc-icon {
+            font-size: 3rem;
+        }
+
+        .doc-info {
+            flex: 1;
+        }
+
+        .doc-name {
+            font-size: 0.8rem;
+            font-weight: 500;
+            color: var(--ink);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .doc-date {
+            font-size: 0.65rem;
+            color: var(--ink-muted);
+        }
+
+        .doc-actions {
+            display: flex;
+            gap: 8px;
+            margin-top: 4px;
+        }
+
+        .doc-actions button {
+            padding: 4px 10px;
+            border: none;
+            border-radius: 6px;
+            font-size: 0.7rem;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .doc-view-btn {
+            background: var(--blue-dim);
+            color: var(--blue);
+        }
+
+        .doc-view-btn:hover {
+            background: var(--blue-soft);
+        }
+
+        .doc-download-btn {
+            background: var(--green-dim);
+            color: var(--green);
+        }
+
+        .doc-download-btn:hover {
+            background: var(--green-soft);
+        }
+
+        /* ===== DOCUMENT VIEWER MODAL ===== */
+        .viewer-modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.75);
+            backdrop-filter: blur(8px);
+            z-index: 2000;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .viewer-modal.active {
+            display: flex;
+        }
+
+        .viewer-content {
+            background: var(--surface);
+            border-radius: var(--radius);
+            width: 95%;
+            max-width: 1200px;
+            max-height: 92vh;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            animation: zoomIn 0.25s ease;
+        }
+
+        @keyframes zoomIn {
+            from { transform: scale(0.95); opacity: 0; }
+            to { transform: scale(1); opacity: 1; }
+        }
+
+        .viewer-header {
+            padding: 16px 24px;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: var(--surface-2);
+            flex-shrink: 0;
+        }
+
+        .viewer-header .file-info {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .viewer-header .file-info h4 {
+            font-family: 'DM Serif Display', serif;
+            font-size: 1.1rem;
+            color: var(--ink);
+            max-width: 400px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .viewer-header .file-info small {
+            color: var(--ink-muted);
+            font-size: 0.75rem;
+        }
+
+        .viewer-close {
+            background: none;
+            border: none;
+            font-size: 1.8rem;
+            cursor: pointer;
+            color: var(--ink-muted);
+            transition: all 0.2s;
+            padding: 0 8px;
+        }
+
+        .viewer-close:hover {
+            color: var(--red);
+            transform: scale(1.1);
+        }
+
+        .viewer-body {
+            flex: 1;
+            overflow: auto;
+            padding: 20px;
+            background: var(--surface-2);
+            min-height: 400px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .viewer-body iframe {
+            width: 100%;
+            height: 70vh;
+            border: none;
+            border-radius: 8px;
+            background: white;
+        }
+
+        .viewer-body img {
+            max-width: 100%;
+            max-height: 70vh;
+            object-fit: contain;
+            border-radius: 8px;
+            background: white;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+        }
+
+        .viewer-body .text-preview {
+            width: 100%;
+            max-height: 70vh;
+            overflow: auto;
+            background: white;
+            border-radius: 8px;
+            padding: 24px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.85rem;
+            line-height: 1.8;
+            white-space: pre-wrap;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+        }
+
+        .viewer-body .unsupported {
+            text-align: center;
+            padding: 60px 20px;
+            color: var(--ink-muted);
+        }
+
+        .viewer-body .unsupported i {
+            font-size: 4rem;
+            display: block;
+            margin-bottom: 16px;
+        }
+
+        .viewer-footer {
+            padding: 12px 24px;
+            border-top: 1px solid var(--border);
+            background: var(--surface-2);
+            display: flex;
+            gap: 12px;
+            flex-shrink: 0;
+        }
+
+        .viewer-footer a {
+            padding: 8px 18px;
+            border-radius: 8px;
+            text-decoration: none;
+            font-size: 0.8rem;
+            font-weight: 500;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .viewer-footer .btn-download {
+            background: var(--blue);
+            color: white;
+        }
+
+        .viewer-footer .btn-download:hover {
+            background: #1a3d9e;
+        }
+
+        .viewer-footer .btn-open {
+            background: var(--surface-3);
+            color: var(--ink-mid);
+        }
+
+        .viewer-footer .btn-open:hover {
+            background: var(--border);
+        }
+
+        .question-item {
+            background: var(--surface-2);
+            padding: 12px;
+            margin-bottom: 10px;
+            border-radius: 8px;
+            border: 1px solid var(--border);
+        }
+
+        .question-text {
+            font-weight: 600;
+            margin-bottom: 6px;
+            font-size: 0.85rem;
+        }
+
+        .question-answer {
+            font-size: 0.85rem;
+            color: var(--ink-mid);
+            padding-left: 12px;
+            border-left: 2px solid var(--blue);
+        }
+
+        .notes-content, .transcript-content {
+            background: var(--surface-2);
+            padding: 16px;
+            border-radius: 10px;
+            border: 1px solid var(--border);
+            font-size: 0.85rem;
+            line-height: 1.5;
+            white-space: pre-wrap;
+        }
+
+        .edit-btn {
+            background: var(--amber);
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 8px;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.85rem;
+            font-weight: 500;
+            transition: all 0.2s;
+        }
+
+        .edit-btn:hover {
+            background: #b85e00;
+            transform: translateY(-1px);
+        }
+
+        .spinner {
+            border: 3px solid var(--surface-3);
+            border-top: 3px solid var(--blue);
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 12px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        @media (max-width: 768px) {
+            .info-grid {
+                grid-template-columns: 1fr;
+            }
+            .two-columns {
+                flex-direction: column;
+            }
+            .container {
+                padding: 20px 16px;
+            }
+            .doc-grid {
+                grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+            }
+            .viewer-header .file-info h4 {
+                max-width: 150px;
+                font-size: 0.9rem;
+            }
+            .viewer-body iframe {
+                height: 50vh;
+            }
+            .viewer-body img {
+                max-height: 50vh;
+            }
+        }
+        /* ===== FACE VERIFICATION STYLES ===== */
+.btn-face-upload:hover {
+    background: var(--blue-dim);
+    border-color: var(--blue);
+}
+
+.btn-verify:not(:disabled):hover {
+    background: #6d28d9;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(124, 58, 237, 0.3);
+}
+
+.btn-verify:not(:disabled) {
+    opacity: 1;
+}
+
+.btn-clear-face:hover {
+    background: var(--red-dim);
+    color: var(--red);
+    border-color: var(--red);
+}
+
+#facePreview {
+    display: none;
+}
+
+#facePreview.show {
+    display: block !important;
+}
+
+#idPreviewContainer, #meetPreviewContainer {
+    display: none !important;
+}
+
+#idPreviewContainer.show, #meetPreviewContainer.show {
+    display: flex !important;
+}
+
+#faceResult.match {
+    background: var(--green-dim);
+    color: var(--green);
+    border: 2px solid var(--green);
+}
+
+#faceResult.no-match {
+    background: var(--red-dim);
+    color: var(--red);
+    border: 2px solid var(--red);
+}
+
+#faceResult.loading {
+    background: var(--blue-dim);
+    color: var(--blue);
+    border: 2px solid var(--blue);
+    animation: pulse-loading 1.5s ease-in-out infinite;
+}
+
+@keyframes pulse-loading {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.6; }
+}
+
+#faceResult .badge-icon {
+    font-size: 1.2rem;
+    margin-right: 6px;
+}
+
+.face-history-item {
+    padding: 4px 8px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.face-history-item:last-child {
+    border-bottom: none;
+}
+
+.face-history-match {
+    color: var(--green);
+}
+
+.face-history-no-match {
+    color: var(--red);
+}
+    </style>
+</head>
+<body>
+
+<header>
+    <div class="logo-group">
+        <img src="/static/logo.png" alt="FARE" class="top-logo" onerror="this.src='https://placehold.co/42x42?text=FARE'"/>
+        <div class="brand-text">
+            <div class="logo-name">DI Health</div>
+            <div class="logo-sub">Case Information</div>
+        </div>
+    </div>
+    <div class="header-right">
+        <a href="/static/case_detail.html" class="back-link">← Back to Case Management</a>
+        <div class="user-info">
+            <div class="user-avatar" id="userAvatar">A</div>
+            <span class="user-name" id="userName">Loading...</span>
+        </div>
+        <button class="logout-btn" onclick="logout()">Logout</button>
+        <div class="status-chip">
+            <span class="status-dot"></span>
+            Online
+        </div>
+        <div class="date-chip" id="datechip"></div>
+    </div>
+</header>
+
+<div class="page">
+    <div class="container">
+        <div id="loadingState" style="text-align: center; padding: 60px;">
+            <div class="spinner"></div>
+            <p>Loading case information...</p>
+        </div>
+        
+        <div id="caseContent" style="display: none;">
+            <div class="two-columns">
+                <!-- LEFT COLUMN -->
+                <div class="column">
+                    <!-- Basic Information Card -->
+                    <div class="card">
+                        <div class="card-header">
+                            <i class="bi bi-info-circle"></i> Basic Information
+                        </div>
+                        <div class="card-body">
+                            <div class="info-grid" id="basicInfo"></div>
+                        </div>
+                    </div>
+
+                    <!-- Documents Card -->
+                    <div class="card">
+                        <div class="card-header">
+                            <i class="bi bi-paperclip"></i> Documents
+                            <span style="margin-left: auto; font-size: 0.75rem; font-weight: 400; color: var(--ink-muted);" id="docCount"></span>
+                        </div>
+                        <div class="card-body">
+                            <div id="documentsList">Loading documents...</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- RIGHT COLUMN -->
+                <div class="column">
+                    <!-- Notes Card -->
+                    <div class="card">
+                        <div class="card-header">
+                            <i class="bi bi-pencil-square"></i> Case Notes
+                        </div>
+                        <div class="card-body">
+                            <div id="notesContent" class="notes-content">Loading...</div>
+                        </div>
+                    </div>
+
+                    <!-- Questionnaire Card -->
+                    <div class="card">
+                        <div class="card-header">
+                            <i class="bi bi-question-circle"></i> Medical Questionnaire
+                        </div>
+                        <div class="card-body">
+                            <div id="questionnaireContent">Loading...</div>
+                        </div>
+                    </div>
+
+                    <!-- Transcript Card -->
+                    <div class="card">
+                        <div class="card-header">
+                            <i class="bi bi-mic"></i> Meeting Transcript
+                        </div>
+                        <div class="card-body">
+                            <div id="transcriptContent" class="transcript-content">No transcript available yet.</div>
+                        </div>
+                    </div>
+<!-- ===== FACE VERIFICATION CARD ===== -->
+<div class="card">
+    <div class="card-header">
+        <i class="bi bi-person-check" style="color: var(--purple);"></i> Face Verification
+        <span style="margin-left: auto; font-size: 0.7rem; font-weight: 400; color: var(--ink-muted);" id="faceStatus">Not verified</span>
+    </div>
+    <div class="card-body">
+        <div style="display: flex; flex-direction: column; gap: 12px;">
+            <!-- Upload Buttons -->
+            <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                <input type="file" id="idPhotoInput" accept="image/*" style="display:none" onchange="previewIdPhoto()">
+                <input type="file" id="meetPhotoInput" accept="image/*" style="display:none" onchange="previewMeetPhoto()">
+                
+                <button class="btn-face-upload" onclick="document.getElementById('idPhotoInput').click()" style="padding: 8px 16px; border: 1.5px solid var(--border); border-radius: 8px; background: var(--surface); cursor: pointer; font-size: 0.8rem; display: flex; align-items: center; gap: 6px; transition: all 0.2s;">
+                    <i class="bi bi-person-badge"></i> ID Photo
+                </button>
+                <button class="btn-face-upload" onclick="document.getElementById('meetPhotoInput').click()" style="padding: 8px 16px; border: 1.5px solid var(--border); border-radius: 8px; background: var(--surface); cursor: pointer; font-size: 0.8rem; display: flex; align-items: center; gap: 6px; transition: all 0.2s;">
+                    <i class="bi bi-camera-video"></i> Meet Screenshot
+                </button>
+                <button class="btn-verify" onclick="verifyFace()" disabled id="verifyFaceBtn" style="padding: 8px 20px; border: none; border-radius: 8px; background: var(--purple); color: white; cursor: pointer; font-size: 0.8rem; font-weight: 600; display: flex; align-items: center; gap: 6px; opacity: 0.5; transition: all 0.2s;">
+                    <i class="bi bi-shuffle"></i> Verify
+                </button>
+                <button class="btn-clear-face" onclick="clearFaceVerification()" style="padding: 8px 16px; border: 1.5px solid var(--border); border-radius: 8px; background: var(--surface-3); cursor: pointer; font-size: 0.8rem; color: var(--ink-muted); transition: all 0.2s;">
+                    <i class="bi bi-x-circle"></i> Clear
+                </button>
+            </div>
+
+            <!-- Image Previews -->
+            <div id="facePreview" style="display: none; padding: 12px; background: var(--surface-2); border-radius: 10px; border: 1px solid var(--border);">
+                <div style="display: flex; gap: 20px; flex-wrap: wrap; align-items: center;">
+                    <div id="idPreviewContainer" style="display: none; text-align: center;">
+                        <img id="idPreview" style="width: 100px; height: 100px; object-fit: cover; border-radius: 10px; border: 2px solid var(--border);">
+                        <p style="font-size: 0.65rem; color: var(--ink-muted); margin: 4px 0 0;">ID Photo</p>
+                    </div>
+                    <div id="meetPreviewContainer" style="display: none; text-align: center;">
+                        <img id="meetPreview" style="width: 100px; height: 100px; object-fit: cover; border-radius: 10px; border: 2px solid var(--border);">
+                        <p style="font-size: 0.65rem; color: var(--ink-muted); margin: 4px 0 0;">Screenshot</p>
+                    </div>
+                    <div id="faceResult" style="display: none; padding: 10px 18px; border-radius: 10px; font-weight: 600; font-size: 0.85rem; flex: 1; min-width: 150px;">
+                        <!-- Result will be shown here -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- Result History -->
+            <div id="verificationHistory" style="display: none; margin-top: 8px; padding: 12px; background: var(--surface-2); border-radius: 8px; border: 1px solid var(--border);">
+                <p style="font-size: 0.7rem; font-weight: 600; color: var(--ink-muted); margin-bottom: 6px;">📋 Verification History</p>
+                <div id="historyList" style="max-height: 100px; overflow-y: auto; font-size: 0.75rem; color: var(--ink-mid);"></div>
+            </div>
+        </div>
+    </div>
+</div>
+                    <!-- Action Buttons -->
+                    <div class="card">
+                        <div class="card-body" style="display: flex; gap: 12px; flex-wrap: wrap;">
+                            <button class="edit-btn" id="editCaseBtn">
+                                <i class="bi bi-pencil"></i> Edit Case
+                            </button>
+                            <button class="edit-btn" style="background: var(--green);" id="refreshDocsBtn">
+                                <i class="bi bi-arrow-clockwise"></i> Refresh Documents
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ===== DOCUMENT VIEWER MODAL ===== -->
+<div id="documentViewer" class="viewer-modal">
+    <div class="viewer-content">
+        <div class="viewer-header">
+            <div class="file-info">
+                <i class="bi bi-file-earmark" style="font-size: 1.5rem; color: var(--blue);"></i>
+                <div>
+                    <h4 id="viewerFileName">Document Name</h4>
+                    <small id="viewerFileMeta">Type · Size</small>
+                </div>
+            </div>
+            <button class="viewer-close" onclick="closeViewer()">&times;</button>
+        </div>
+        <div class="viewer-body" id="viewerBody">
+            <div style="text-align: center; color: var(--ink-muted);">
+                <i class="bi bi-file-earmark" style="font-size: 3rem;"></i>
+                <p>Loading document...</p>
+            </div>
+        </div>
+        <div class="viewer-footer">
+            <a href="#" id="viewerDownloadBtn" class="btn-download" target="_blank">
+                <i class="bi bi-download"></i> Download
+            </a>
+            <a href="#" id="viewerOpenBtn" class="btn-open" target="_blank">
+                <i class="bi bi-box-arrow-up-right"></i> Open in New Tab
+            </a>
+        </div>
+    </div>
+</div>
+
+<script>
+    // ===== AUTHENTICATION =====
+    const authToken = localStorage.getItem('auth_token');
+    const userStr = localStorage.getItem('user');
+    
+    if (!authToken || !userStr) {
+        window.location.href = '/static/login.html';
+    }
+    
+    let currentUser = null;
+    let currentCaseData = null;
+    let allDocuments = [];
+    
+    try {
+        currentUser = JSON.parse(userStr);
+        document.getElementById('userName').textContent = currentUser.name || currentUser.username;
+        document.getElementById('userAvatar').textContent = (currentUser.name || currentUser.username).charAt(0).toUpperCase();
+    } catch(e) {
+        window.location.href = '/static/login.html';
+    }
+    
+    const d = new Date();
+    document.getElementById('datechip').textContent = d.toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' });
+    
+    // ===== GET CASE ID =====
+    const urlParams = new URLSearchParams(window.location.search);
+    const caseId = urlParams.get('id');
+    
+    if (!caseId) {
+        showToast('No case ID provided', 'error');
+        setTimeout(() => window.location.href = '/static/case_detail.html', 2000);
+    }
+    
+    // ===== HELPER FUNCTIONS =====
+    function getHeaders() {
+        return {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${authToken}`
+        };
+    }
+    
+    function showToast(message, type = 'success') {
+        const toast = document.createElement('div');
+        toast.className = `toast toast-${type}`;
+        toast.innerHTML = message;
+        document.body.appendChild(toast);
+        setTimeout(() => toast.remove(), 3000);
+    }
+    
+    function logout() {
+        localStorage.removeItem('auth_token');
+        localStorage.removeItem('user');
+        window.location.href = '/static/login.html';
+    }
+    
+    function escapeHtml(text) {
+        if (!text) return '';
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
+    
+    function getStatusBadge(status) {
+        const badges = {
+            'pending': '<span class="status-badge status-pending">Pending</span>',
+            'scheduled': '<span class="status-badge status-scheduled">Scheduled</span>',
+            'completed': '<span class="status-badge status-completed">Completed</span>',
+            'non_workable': '<span class="status-badge status-non_workable">Non-Workable</span>'
+        };
+        return badges[status] || `<span class="status-badge">${status}</span>`;
+    }
+    
+    function getFileIcon(fileType, fileName) {
+        const ext = fileName ? fileName.split('.').pop().toLowerCase() : '';
+        const iconMap = {
+            'pdf': 'bi-file-pdf',
+            'jpg': 'bi-file-image',
+            'jpeg': 'bi-file-image',
+            'png': 'bi-file-image',
+            'gif': 'bi-file-image',
+            'webp': 'bi-file-image',
+            'svg': 'bi-file-image',
+            'doc': 'bi-file-word',
+            'docx': 'bi-file-word',
+            'xls': 'bi-file-excel',
+            'xlsx': 'bi-file-excel',
+            'ppt': 'bi-file-ppt',
+            'pptx': 'bi-file-ppt',
+            'txt': 'bi-file-text',
+            'csv': 'bi-file-text',
+            'json': 'bi-file-code',
+            'xml': 'bi-file-code',
+            'zip': 'bi-file-zip',
+            'rar': 'bi-file-zip',
+            'mp4': 'bi-file-play',
+            'mp3': 'bi-file-music',
+        };
+        return iconMap[ext] || 'bi-file-earmark';
+    }
+    
+    function getFileType(fileName) {
+        const ext = fileName ? fileName.split('.').pop().toLowerCase() : '';
+        const typeMap = {
+            'pdf': 'pdf',
+            'jpg': 'image',
+            'jpeg': 'image',
+            'png': 'image',
+            'gif': 'image',
+            'webp': 'image',
+            'svg': 'image',
+            'txt': 'text',
+            'csv': 'text',
+            'json': 'text',
+            'xml': 'text',
+            'doc': 'word',
+            'docx': 'word',
+            'xls': 'excel',
+            'xlsx': 'excel',
+            'ppt': 'ppt',
+            'pptx': 'ppt',
+        };
+        return typeMap[ext] || 'other';
+    }
+    
+    function formatFileSize(bytes) {
+        if (!bytes) return 'Unknown size';
+        const sizes = ['B', 'KB', 'MB', 'GB'];
+        const i = Math.floor(Math.log(bytes) / Math.log(1024));
+        return (bytes / Math.pow(1024, i)).toFixed(1) + ' ' + sizes[i];
+    }
+
+    // ===== LOAD CASE DETAILS =====
+    async function loadCaseDetails() {
+        try {
+            const response = await fetch(`/api/cases/${caseId}`, { headers: getHeaders() });
+            if (!response.ok) throw new Error('Case not found');
+            currentCaseData = await response.json();
+            
+            document.getElementById('basicInfo').innerHTML = `
+                <div class="info-item"><div class="info-label">Case ID</div><div class="info-value"><strong>${currentCaseData.case_id}</strong></div></div>
+                <div class="info-item"><div class="info-label">Patient Name</div><div class="info-value">${escapeHtml(currentCaseData.name)}</div></div>
+                <div class="info-item"><div class="info-label">Phone Number</div><div class="info-value">${currentCaseData.phone_number}</div></div>
+                <div class="info-item"><div class="info-label">Category</div><div class="info-value">${currentCaseData.category === 'normal' ? 'Normal Health Claim' : 'Pre-existing Disease'}</div></div>
+                <div class="info-item"><div class="info-label">Status</div><div class="info-value">${getStatusBadge(currentCaseData.status)}</div></div>
+                <div class="info-item"><div class="info-label">Claim ID</div><div class="info-value">${currentCaseData.claim_id || 'N/A'}</div></div>
+                <div class="info-item"><div class="info-label">Insurance Company</div><div class="info-value">${currentCaseData.company_name || 'N/A'}</div></div>
+                <div class="info-item"><div class="info-label">Created At</div><div class="info-value">${new Date(currentCaseData.created_at).toLocaleString()}</div></div>
+                <div class="info-item"><div class="info-label">Last Updated</div><div class="info-value">${currentCaseData.updated_at ? new Date(currentCaseData.updated_at).toLocaleString() : 'N/A'}</div></div>
+                ${currentCaseData.meeting_link ? `<div class="info-item"><div class="info-label">Meeting Link</div><div class="info-value"><a href="${currentCaseData.meeting_link}" target="_blank">Join Meeting →</a></div></div>` : ''}
+                ${currentCaseData.scheduled_time ? `<div class="info-item"><div class="info-label">Scheduled Time</div><div class="info-value">${new Date(currentCaseData.scheduled_time).toLocaleString()}</div></div>` : ''}
+                ${currentCaseData.drive_link ? `<div class="info-item"><div class="info-label">Drive Folder</div><div class="info-value"><a href="${currentCaseData.drive_link}" target="_blank">Open Folder →</a></div></div>` : ''}
+            `;
+            
+            document.getElementById('notesContent').innerHTML = currentCaseData.notes || 'No notes added yet.';
+            document.getElementById('transcriptContent').innerHTML = currentCaseData.transcript || 'No transcript available yet. Will appear after the meeting.';
+            
+            await loadDocuments();
+            await loadQuestionnaire();
+            
+            document.getElementById('loadingState').style.display = 'none';
+            document.getElementById('caseContent').style.display = 'block';
+            
+        } catch (error) {
+            showToast('Error loading case details', 'error');
+            document.getElementById('loadingState').innerHTML = '<p style="color: red;">Error loading case. Please go back and try again.</p>';
+        }
+    }
+    
+    // ===== LOAD DOCUMENTS WITH VISUAL PREVIEW =====
+    async function loadDocuments() {
+        try {
+            const response = await fetch(`/api/cases/${caseId}/documents`, { headers: getHeaders() });
+            if (!response.ok) throw new Error('Failed to load documents');
+            allDocuments = await response.json();
+            
+            const container = document.getElementById('documentsList');
+            const countSpan = document.getElementById('docCount');
+            
+            countSpan.textContent = `${allDocuments.length} file${allDocuments.length !== 1 ? 's' : ''}`;
+            
+            if (allDocuments.length === 0) {
+                container.innerHTML = '<p style="color: var(--ink-muted); text-align: center; padding: 30px;"><i class="bi bi-folder" style="font-size: 2rem; display: block; margin-bottom: 10px;"></i>No documents uploaded yet.</p>';
+                return;
+            }
+            
+            container.innerHTML = `<div class="doc-grid">${allDocuments.map((doc, index) => {
+                const fileType = getFileType(doc.file_name);
+                const icon = getFileIcon(fileType, doc.file_name);
+                const isImage = fileType === 'image';
+                const previewHtml = isImage 
+                    ? `<img src="${doc.file_url}" alt="${escapeHtml(doc.file_name)}" loading="lazy" onerror="this.parentElement.innerHTML='<i class=\\'bi ${icon}\\' style=\\'font-size: 3rem;\\'></i>'">`
+                    : `<i class="bi ${icon}" style="font-size: 3rem;"></i>`;
+                
+                return `
+                    <div class="doc-card" onclick="openViewer(${index})">
+                        <div class="doc-preview">
+                            ${previewHtml}
+                        </div>
+                        <div class="doc-info">
+                            <div class="doc-name" title="${escapeHtml(doc.file_name)}">${escapeHtml(doc.file_name)}</div>
+                            <div class="doc-date">${new Date(doc.uploaded_at).toLocaleString()}</div>
+                        </div>
+                        <div class="doc-actions">
+                            <button class="doc-view-btn" onclick="event.stopPropagation(); openViewer(${index})">
+                                <i class="bi bi-eye"></i> View
+                            </button>
+                            <button class="doc-download-btn" onclick="event.stopPropagation(); downloadDocument('${doc.file_url}', '${escapeHtml(doc.file_name)}')">
+                                <i class="bi bi-download"></i>
+                            </button>
+                        </div>
+                    </div>
+                `;
+            }).join('')}</div>`;
+            
+        } catch (error) {
+            document.getElementById('documentsList').innerHTML = '<p style="color: red;">Error loading documents</p>';
+        }
+    }
+    
+    // ===== DOCUMENT VIEWER =====
+    function openViewer(index) {
+        const doc = allDocuments[index];
+        if (!doc) return;
+        
+        const modal = document.getElementById('documentViewer');
+        const fileName = document.getElementById('viewerFileName');
+        const fileMeta = document.getElementById('viewerFileMeta');
+        const body = document.getElementById('viewerBody');
+        const downloadBtn = document.getElementById('viewerDownloadBtn');
+        const openBtn = document.getElementById('viewerOpenBtn');
+        
+        fileName.textContent = doc.file_name;
+        fileMeta.textContent = `${doc.file_type || 'Document'} · ${formatFileSize(doc.file_size)}`;
+        downloadBtn.href = doc.file_url;
+        openBtn.href = doc.file_url;
+        
+        const fileType = getFileType(doc.file_name);
+        const url = doc.file_url;
+        
+        // Determine what to show
+        let contentHtml = '';
+        
+        if (fileType === 'image') {
+            contentHtml = `<img src="${url}" alt="${escapeHtml(doc.file_name)}" onerror="this.parentElement.innerHTML='<div class=\\'unsupported\\'><i class=\\'bi bi-file-earmark\\'></i><p>Image could not be loaded</p></div>'">`;
+        } else if (fileType === 'pdf') {
+            contentHtml = `<iframe src="${url}#toolbar=1" allowfullscreen></iframe>`;
+        } else if (fileType === 'text') {
+            // Try to fetch and display text content
+            contentHtml = `<div class="text-preview" id="textPreview">Loading text content...</div>`;
+            fetch(url, { headers: getHeaders() })
+                .then(res => res.text())
+                .then(text => {
+                    document.getElementById('textPreview').textContent = text || 'Empty file';
+                })
+                .catch(() => {
+                    document.getElementById('textPreview').textContent = 'Could not load text content. Try downloading the file.';
+                });
+        } else {
+            // Other file types - show download option
+            contentHtml = `
+                <div class="unsupported">
+                    <i class="bi ${getFileIcon(fileType, doc.file_name)}"></i>
+                    <p>This file type cannot be previewed directly.</p>
+                    <p style="font-size: 0.8rem; margin-top: 8px;">Click "Download" to view the file.</p>
+                </div>
+            `;
+        }
+        
+        body.innerHTML = contentHtml;
+        modal.classList.add('active');
+        document.body.style.overflow = 'hidden';
+    }
+    
+    function closeViewer() {
+        document.getElementById('documentViewer').classList.remove('active');
+        document.body.style.overflow = '';
+    }
+    
+    function downloadDocument(url, fileName) {
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = fileName;
+        a.target = '_blank';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        showToast(`Downloading: ${fileName}`, 'info');
+    }
+    
+    // Close viewer with Escape key
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') closeViewer();
+    });
+    
+    // Close viewer on background click
+    document.getElementById('documentViewer').addEventListener('click', (e) => {
+        if (e.target === e.currentTarget) closeViewer();
+    });
+    
+    // ===== LOAD QUESTIONNAIRE =====
+    async function loadQuestionnaire() {
+        const container = document.getElementById('questionnaireContent');
+        
+        const genericQuestions = [
+            "What is your full name and age?",
+            "What is your contact number?",
+            "What is the insurance policy number?",
+            "When did the symptoms first appear?",
+            "What are your current symptoms?",
+            "Have you visited any doctor/hospital?",
+            "What diagnosis was given?",
+            "What treatment has been prescribed?",
+            "Have you had any diagnostic tests?",
+            "What is the estimated treatment cost?"
+        ];
+        
+        let specificQuestions = currentCaseData.category === 'normal' 
+            ? ["Was this a sudden onset or gradual?", "Had you ever experienced this before?", "Was there any triggering event?"]
+            : ["What pre-existing condition do you have?", "When were you first diagnosed?", "What medications do you regularly take?", "Have you had any previous hospitalizations?", "Who is your regular treating doctor?", "Was this current episode related to pre-existing condition?"];
+        
+        container.innerHTML = `
+            <h5 style="margin-bottom: 12px;">Generic Questions</h5>
+            ${genericQuestions.map((q, i) => `
+                <div class="question-item">
+                    <div class="question-text">${i+1}. ${q}</div>
+                    <div class="question-answer">Not answered yet. Click "Edit" to add answers.</div>
+                </div>
+            `).join('')}
+            <h5 style="margin: 20px 0 12px;">Specific Questions</h5>
+            ${specificQuestions.map((q, i) => `
+                <div class="question-item">
+                    <div class="question-text">${q}</div>
+                    <div class="question-answer">Not answered yet. Click "Edit" to add answers.</div>
+                </div>
+            `).join('')}
+        `;
+    }
+    
+    // ===== EVENT LISTENERS =====
+    document.getElementById('editCaseBtn').addEventListener('click', () => {
+        window.location.href = `/static/case_detail.html?edit=${caseId}`;
+    });
+    
+    document.getElementById('refreshDocsBtn').addEventListener('click', () => {
+        showToast('Refreshing documents...', 'info');
+        loadDocuments();
+    });
+    // ============================================================
+// FACE VERIFICATION FUNCTIONS
+// ============================================================
+
+let idPhotoFile = null;
+let meetPhotoFile = null;
+let verificationHistory = [];
+
+function previewIdPhoto() {
+    const input = document.getElementById('idPhotoInput');
+    if (input.files && input.files[0]) {
+        idPhotoFile = input.files[0];
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            document.getElementById('idPreview').src = e.target.result;
+            document.getElementById('idPreviewContainer').classList.add('show');
+            updateFacePreview();
+        };
+        reader.readAsDataURL(input.files[0]);
+        showToast('ID photo uploaded', 'info');
+    }
+}
+
+function previewMeetPhoto() {
+    const input = document.getElementById('meetPhotoInput');
+    if (input.files && input.files[0]) {
+        meetPhotoFile = input.files[0];
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            document.getElementById('meetPreview').src = e.target.result;
+            document.getElementById('meetPreviewContainer').classList.add('show');
+            updateFacePreview();
+        };
+        reader.readAsDataURL(input.files[0]);
+        showToast('Meet screenshot uploaded', 'info');
+    }
+}
+
+function updateFacePreview() {
+    const preview = document.getElementById('facePreview');
+    const hasId = idPhotoFile !== null;
+    const hasMeet = meetPhotoFile !== null;
+    
+    if (hasId || hasMeet) {
+        preview.classList.add('show');
+    } else {
+        preview.classList.remove('show');
+    }
+    
+    const verifyBtn = document.getElementById('verifyFaceBtn');
+    if (hasId && hasMeet) {
+        verifyBtn.disabled = false;
+        verifyBtn.style.opacity = '1';
+        verifyBtn.innerHTML = '<i class="bi bi-shuffle"></i> Verify';
+    } else {
+        verifyBtn.disabled = true;
+        verifyBtn.style.opacity = '0.5';
+        if (hasId || hasMeet) {
+            verifyBtn.innerHTML = '<i class="bi bi-shuffle"></i> Need both images';
+        } else {
+            verifyBtn.innerHTML = '<i class="bi bi-shuffle"></i> Verify';
+        }
+    }
+}
+
+function clearFaceVerification() {
+    idPhotoFile = null;
+    meetPhotoFile = null;
+    document.getElementById('idPhotoInput').value = '';
+    document.getElementById('meetPhotoInput').value = '';
+    document.getElementById('idPreviewContainer').classList.remove('show');
+    document.getElementById('meetPreviewContainer').classList.remove('show');
+    document.getElementById('faceResult').style.display = 'none';
+    document.getElementById('faceResult').className = '';
+    document.getElementById('facePreview').classList.remove('show');
+    document.getElementById('faceStatus').textContent = 'Not verified';
+    document.getElementById('faceStatus').style.color = 'var(--ink-muted)';
+    updateFacePreview();
+    showToast('Face verification cleared', 'info');
+}
+async function verifyFace() {
+    if (!idPhotoFile || !meetPhotoFile) {
+        showToast('Please upload both ID photo and meet screenshot', 'error');
+        return;
+    }
+    
+    const resultDiv = document.getElementById('faceResult');
+    const statusSpan = document.getElementById('faceStatus');
+    
+    // Show loading state
+    resultDiv.className = 'loading';
+    resultDiv.style.display = 'block';
+    resultDiv.innerHTML = '<span class="badge-icon">⏳</span> Verifying... Please wait (first time may take 1-2 minutes)';
+    statusSpan.textContent = 'Verifying...';
+    statusSpan.style.color = 'var(--blue)';
+    
+    const formData = new FormData();
+    formData.append('id_photo', idPhotoFile);
+    formData.append('meet_screenshot', meetPhotoFile);
+    
+    try {
+        const response = await fetch(`/api/cases/${caseId}/verify-face`, {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${authToken}`
+            },
+            body: formData
+        });
+        
+        if (!response.ok) {
+            const error = await response.json();
+            throw new Error(error.detail || 'Verification failed');
+        }
+        
+        const result = await response.json();
+        
+        // ✅ USE REAL RESULT FROM BACKEND
+        if (result.match) {
+            resultDiv.className = 'match';
+            resultDiv.innerHTML = `
+                <span class="badge-icon">✅</span> 
+                Identity Verified! 
+                <span style="font-weight: 400; font-size: 0.7rem; margin-left: 8px; display: block; margin-top: 4px;">
+                    Similarity: ${result.similarity.toFixed(3)} · Threshold: ${result.threshold.toFixed(2)}
+                </span>
+                ${result.issues1.length > 0 || result.issues2.length > 0 ? `
+                    <span style="font-weight: 400; font-size: 0.65rem; color: var(--amber); display: block; margin-top: 4px;">
+                        ⚠️ Quality issues: ${[...result.issues1, ...result.issues2].join(', ')}
+                    </span>
+                ` : ''}
+            `;
+            statusSpan.textContent = '✅ Verified';
+            statusSpan.style.color = 'var(--green)';
+            addHistory('match', result.similarity.toFixed(3));
+            showToast('✅ Identity verified!', 'success');
+        } else {
+            resultDiv.className = 'no-match';
+            resultDiv.innerHTML = `
+                <span class="badge-icon">❌</span> 
+                Identity Mismatch
+                <span style="font-weight: 400; font-size: 0.7rem; margin-left: 8px; display: block; margin-top: 4px;">
+                    Similarity: ${result.similarity.toFixed(3)} · Threshold: ${result.threshold.toFixed(2)}
+                </span>
+                ${result.issues1.length > 0 || result.issues2.length > 0 ? `
+                    <span style="font-weight: 400; font-size: 0.65rem; color: var(--amber); display: block; margin-top: 4px;">
+                        ⚠️ Quality issues: ${[...result.issues1, ...result.issues2].join(', ')}
+                    </span>
+                ` : ''}
+            `;
+            statusSpan.textContent = '❌ Mismatch';
+            statusSpan.style.color = 'var(--red)';
+            addHistory('no-match', result.similarity.toFixed(3));
+            showToast('❌ Identity mismatch!', 'error');
+        }
+        
+    } catch (error) {
+        resultDiv.className = 'no-match';
+        resultDiv.style.display = 'block';
+        resultDiv.innerHTML = `
+            <span class="badge-icon">⚠️</span> 
+            Verification failed: ${error.message}
+        `;
+        statusSpan.textContent = '⚠️ Error';
+        statusSpan.style.color = 'var(--red)';
+        showToast('Face verification failed', 'error');
+    }
+}
+
+function addHistory(type, score) {
+    const timestamp = new Date().toLocaleString();
+    verificationHistory.push({ type, score, timestamp });
+    
+    const historyDiv = document.getElementById('verificationHistory');
+    const historyList = document.getElementById('historyList');
+    
+    if (verificationHistory.length > 0) {
+        historyDiv.style.display = 'block';
+    }
+    
+    const icon = type === 'match' ? '✅' : '❌';
+    const colorClass = type === 'match' ? 'face-history-match' : 'face-history-no-match';
+    
+    const item = document.createElement('div');
+    item.className = 'face-history-item';
+    item.innerHTML = `
+        <span>${icon} ${type === 'match' ? 'Match' : 'No Match'}</span>
+        <span>Score: ${score}</span>
+        <span style="font-size: 0.6rem; color: var(--ink-muted);">${timestamp}</span>
+    `;
+    historyList.appendChild(item);
+    
+    // Keep only last 10 items
+    while (historyList.children.length > 10) {
+        historyList.removeChild(historyList.firstChild);
+    }
+}
+
+// Load existing verification history from server (if any)
+async function loadVerificationHistory() {
+    try {
+        const response = await fetch(`/api/cases/${caseId}/face-history`, {
+            headers: getHeaders()
+        });
+        if (response.ok) {
+            const data = await response.json();
+            if (data.history && data.history.length > 0) {
+                data.history.forEach(h => {
+                    addHistory(h.result, h.score);
+                });
+                // Update status
+                const last = data.history[data.history.length - 1];
+                const statusSpan = document.getElementById('faceStatus');
+                if (last.result === 'match') {
+                    statusSpan.textContent = '✅ Verified';
+                    statusSpan.style.color = 'var(--green)';
+                } else {
+                    statusSpan.textContent = '❌ Mismatch';
+                    statusSpan.style.color = 'var(--red)';
+                }
+            }
+        }
+    } catch (e) {
+        // Silently fail - no history
+    }
+}
+    // ===== INITIALIZE =====
+    loadCaseDetails();
+    loadVerificationHistory();  // ← ADD THIS LINE
+
+    // Auto-refresh documents every 30 seconds
+    setInterval(() => {
+        if (currentCaseData) loadDocuments();
+    }, 30000);
+</script>
+</body>
+</html>

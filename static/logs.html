@@ -1,0 +1,146 @@
+<!-- static/logs.html - Real-time Log Viewer -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Real-time Logs - FARE AutoSpect</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'DM Sans', sans-serif;
+            background: #0f1419;
+            color: #e4e7ec;
+            padding: 20px;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        h1 {
+            margin-bottom: 20px;
+            color: #1d4ed8;
+        }
+        .log-container {
+            background: #1a1a2e;
+            border-radius: 12px;
+            padding: 20px;
+            height: 70vh;
+            overflow-y: auto;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.85rem;
+        }
+        .log-entry {
+            padding: 8px 12px;
+            border-bottom: 1px solid #2a2a3e;
+            margin-bottom: 4px;
+        }
+        .log-time {
+            color: #6b7280;
+            margin-right: 15px;
+        }
+        .log-type-case_created { color: #10b981; }
+        .log-type-case_updated { color: #3b82f6; }
+        .log-type-document_uploaded { color: #f59e0b; }
+        .log-type-error { color: #ef4444; }
+        .log-type-info { color: #8b5cf6; }
+        .status {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 0.75rem;
+        }
+        .status-connected {
+            background: #10b981;
+            color: white;
+        }
+        .status-disconnected {
+            background: #ef4444;
+            color: white;
+        }
+        .badge {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 0.7rem;
+            margin-left: 10px;
+        }
+        .clear-btn {
+            background: #374151;
+            border: none;
+            color: white;
+            padding: 6px 12px;
+            border-radius: 6px;
+            cursor: pointer;
+            margin-bottom: 10px;
+        }
+        .clear-btn:hover {
+            background: #4b5563;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>📡 Real-time System Logs</h1>
+        <button class="clear-btn" onclick="clearLogs()">Clear Logs</button>
+        <div id="logContainer" class="log-container">
+            <div class="log-entry">Waiting for logs...</div>
+        </div>
+    </div>
+
+    <script>
+        let ws = null;
+        const logContainer = document.getElementById('logContainer');
+        
+        function addLog(type, message, timestamp) {
+            const logDiv = document.createElement('div');
+            logDiv.className = `log-entry log-type-${type}`;
+            const time = new Date(timestamp).toLocaleTimeString();
+            logDiv.innerHTML = `
+                <span class="log-time">[${time}]</span>
+                <span class="log-type-${type}">${type}</span>
+                <span> → ${message}</span>
+            `;
+            logContainer.appendChild(logDiv);
+            logContainer.scrollTop = logContainer.scrollHeight;
+        }
+        
+        function clearLogs() {
+            logContainer.innerHTML = '';
+        }
+        
+        function connectWebSocket() {
+            const wsUrl = `ws://localhost:8000/api/logs/ws`;
+            
+            try {
+                ws = new WebSocket(wsUrl);
+                
+                ws.onopen = function() {
+                    console.log('Connected');
+                    addLog('info', 'Connected to log stream', new Date());
+                };
+                
+                ws.onmessage = function(event) {
+                    const data = JSON.parse(event.data);
+                    addLog(data.type, data.message, data.timestamp);
+                };
+                
+                ws.onerror = function(error) {
+                    addLog('error', 'WebSocket error', new Date());
+                };
+                
+                ws.onclose = function() {
+                    addLog('error', 'Disconnected. Reconnecting in 3 seconds...', new Date());
+                    setTimeout(connectWebSocket, 3000);
+                };
+            } catch (error) {
+                addLog('error', 'Connection failed', new Date());
+            }
+        }
+        
+        connectWebSocket();
+    </script>
+</body>
+</html>

@@ -1,0 +1,959 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Dashboard — DI Health</title>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600;9..40,700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --ink: #0f1419;
+            --ink-mid: #374151;
+            --ink-soft: #6b7280;
+            --ink-muted: #9ca3af;
+            --surface: #ffffff;
+            --surface-2: #f8f9fb;
+            --surface-3: #f1f3f7;
+            --border: #e4e7ec;
+            --blue: #1d4ed8;
+            --blue-dim: #eff6ff;
+            --blue-soft: #bfdbfe;
+            --green: #16a34a;
+            --green-dim: #f0fdf4;
+            --green-soft: #bbf7d0;
+            --purple: #7c3aed;
+            --purple-dim: #f5f3ff;
+            --purple-soft: #ddd6fe;
+            --red: #dc2626;
+            --red-dim: #fef2f2;
+            --amber: #d97706;
+            --amber-dim: #fffbeb;
+            --radius: 16px;
+            --radius-sm: 10px;
+        }
+
+        body {
+            font-family: 'DM Sans', system-ui, sans-serif;
+            background: var(--surface-2);
+            color: var(--ink);
+            min-height: 100vh;
+        }
+
+        header {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 64px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 26px;
+            background: rgba(255, 255, 255, 0.92);
+            backdrop-filter: blur(12px);
+            border-bottom: 1px solid var(--border);
+            z-index: 100;
+            box-shadow: 0 1px 0 var(--border), 0 4px 20px rgba(0, 0, 0, 0.03);
+        }
+
+        .logo-group {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .top-logo {
+            height: 42px;
+            width: auto;
+            object-fit: contain;
+            display: block;
+        }
+
+        .brand-text {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+
+        .logo-name {
+            font-family: 'DM Serif Display', serif;
+            font-size: 1.15rem;
+            line-height: 1;
+            color: var(--ink);
+        }
+
+        .logo-sub {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.58rem;
+            letter-spacing: 1.8px;
+            text-transform: uppercase;
+            color: var(--ink-muted);
+            margin-top: 4px;
+        }
+
+        .header-right {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .user-info {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            background: var(--surface-2);
+            padding: 5px 12px;
+            border-radius: 30px;
+            border: 1px solid var(--border);
+        }
+
+        .user-avatar {
+            width: 30px;
+            height: 30px;
+            background: var(--blue-dim);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            color: var(--blue);
+        }
+
+        .user-name {
+            font-size: 0.8rem;
+            font-weight: 500;
+        }
+
+        .back-link {
+            background: rgba(0, 0, 0, 0.05);
+            border: none;
+            cursor: pointer;
+            color: var(--ink-mid);
+            font-size: 0.8rem;
+            padding: 6px 14px;
+            border-radius: 8px;
+            transition: all 0.2s;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .back-link:hover {
+            background: var(--surface-3);
+            color: var(--ink);
+        }
+
+        .logout-btn {
+            background: none;
+            border: none;
+            cursor: pointer;
+            color: var(--ink-muted);
+            font-size: 0.75rem;
+            padding: 4px 8px;
+            border-radius: 6px;
+            transition: all 0.2s;
+        }
+
+        .logout-btn:hover {
+            background: var(--red-dim);
+            color: var(--red);
+        }
+
+        .status-chip {
+            display: flex;
+            align-items: center;
+            gap: 7px;
+            padding: 5px 13px;
+            background: var(--green-dim);
+            border: 1px solid rgba(22, 163, 74, 0.2);
+            border-radius: 30px;
+            font-size: 0.74rem;
+            font-weight: 500;
+            color: var(--green);
+        }
+
+        .status-dot {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: var(--green);
+            animation: pulse 2.2s ease-in-out infinite;
+        }
+
+        @keyframes pulse {
+            0%,
+            100% {
+                opacity: 1;
+                transform: scale(1);
+            }
+            50% {
+                opacity: 0.45;
+                transform: scale(1.45);
+            }
+        }
+
+        .date-chip {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.68rem;
+            color: var(--blue);
+            background: var(--blue-dim);
+            border: 1px solid rgba(29, 78, 216, 0.18);
+            padding: 4px 12px;
+            border-radius: 6px;
+            letter-spacing: 0.4px;
+        }
+
+        .page {
+            padding-top: 80px;
+            max-width: 1400px;
+            margin: 0 auto;
+            padding-left: 24px;
+            padding-right: 24px;
+        }
+
+        .dashboard-title {
+            font-family: 'DM Serif Display', serif;
+            font-size: 1.8rem;
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .dashboard-title i {
+            color: var(--purple);
+        }
+
+        .dashboard-subtitle {
+            color: var(--ink-muted);
+            font-size: 0.9rem;
+            margin-bottom: 32px;
+        }
+
+        /* Stats Grid */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-bottom: 32px;
+        }
+
+        .stat-card {
+            background: var(--surface);
+            border-radius: var(--radius);
+            padding: 20px 24px;
+            border: 1px solid var(--border);
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+            transition: all 0.2s;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
+        }
+
+        .stat-card .stat-icon {
+            font-size: 1.5rem;
+            margin-bottom: 8px;
+        }
+
+        .stat-card .stat-number {
+            font-family: 'DM Serif Display', serif;
+            font-size: 2rem;
+            color: var(--ink);
+        }
+
+        .stat-card .stat-label {
+            font-size: 0.75rem;
+            color: var(--ink-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .stat-card.purple .stat-icon {
+            color: var(--purple);
+        }
+        .stat-card.blue .stat-icon {
+            color: var(--blue);
+        }
+        .stat-card.green .stat-icon {
+            color: var(--green);
+        }
+        .stat-card.amber .stat-icon {
+            color: var(--amber);
+        }
+        .stat-card.red .stat-icon {
+            color: var(--red);
+        }
+
+        /* Charts / Cards */
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 24px;
+            margin-bottom: 32px;
+        }
+
+        .card {
+            background: var(--surface);
+            border-radius: var(--radius);
+            border: 1px solid var(--border);
+            overflow: hidden;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+        }
+
+        .card-header {
+            padding: 16px 20px;
+            background: var(--surface-2);
+            border-bottom: 1px solid var(--border);
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .card-body {
+            padding: 20px;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+
+        .card-body::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .card-body::-webkit-scrollbar-track {
+            background: var(--surface-2);
+            border-radius: 10px;
+        }
+
+        .card-body::-webkit-scrollbar-thumb {
+            background: var(--border);
+            border-radius: 10px;
+        }
+
+        /* Investigator List */
+        .investigator-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 0;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .investigator-item:last-child {
+            border-bottom: none;
+        }
+
+        .investigator-name {
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .investigator-name .badge {
+            font-size: 0.6rem;
+            background: var(--blue-dim);
+            color: var(--blue);
+            padding: 2px 8px;
+            border-radius: 12px;
+        }
+
+        .investigator-stats {
+            display: flex;
+            gap: 16px;
+            font-size: 0.8rem;
+            color: var(--ink-mid);
+        }
+
+        .investigator-stats span {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 6px;
+            background: var(--surface-3);
+            border-radius: 10px;
+            margin-top: 4px;
+            overflow: hidden;
+        }
+
+        .progress-bar .fill {
+            height: 100%;
+            border-radius: 10px;
+            transition: width 0.6s ease;
+        }
+
+        .fill-green {
+            background: var(--green);
+        }
+        .fill-blue {
+            background: var(--blue);
+        }
+        .fill-amber {
+            background: var(--amber);
+        }
+        .fill-red {
+            background: var(--red);
+        }
+
+        /* Status Breakdown */
+        .status-breakdown {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .status-row {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .status-row .label {
+            width: 120px;
+            font-size: 0.8rem;
+            color: var(--ink-mid);
+        }
+
+        .status-row .bar-track {
+            flex: 1;
+            height: 8px;
+            background: var(--surface-3);
+            border-radius: 10px;
+            overflow: hidden;
+        }
+
+        .status-row .bar-track .bar-fill {
+            height: 100%;
+            border-radius: 10px;
+            transition: width 0.8s ease;
+        }
+
+        .status-row .count {
+            font-weight: 600;
+            font-size: 0.85rem;
+            min-width: 30px;
+            text-align: right;
+        }
+
+        /* Recent Activity */
+        .activity-item {
+            padding: 10px 0;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-size: 0.85rem;
+        }
+
+        .activity-item:last-child {
+            border-bottom: none;
+        }
+
+        .activity-icon {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.8rem;
+            flex-shrink: 0;
+        }
+
+        .activity-icon.created {
+            background: var(--green-dim);
+            color: var(--green);
+        }
+        .activity-icon.updated {
+            background: var(--blue-dim);
+            color: var(--blue);
+        }
+        .activity-icon.completed {
+            background: var(--purple-dim);
+            color: var(--purple);
+        }
+        .activity-icon.scheduled {
+            background: var(--amber-dim);
+            color: var(--amber);
+        }
+
+        .activity-text {
+            flex: 1;
+        }
+
+        .activity-text .highlight {
+            font-weight: 600;
+            color: var(--ink);
+        }
+
+        .activity-time {
+            font-size: 0.7rem;
+            color: var(--ink-muted);
+        }
+
+        /* Full width card */
+        .full-width {
+            grid-column: 1 / -1;
+        }
+
+        /* Toast */
+        .toast {
+            position: fixed;
+            bottom: 24px;
+            right: 24px;
+            padding: 12px 20px;
+            border-radius: 12px;
+            color: white;
+            z-index: 1100;
+            animation: slideIn 0.3s ease;
+            font-size: 0.85rem;
+            font-weight: 500;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        }
+
+        .toast-success {
+            background: var(--green);
+        }
+        .toast-error {
+            background: var(--red);
+        }
+        .toast-info {
+            background: var(--blue);
+        }
+
+        @keyframes slideIn {
+            from {
+                transform: translateX(100px);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .dashboard-grid {
+                grid-template-columns: 1fr;
+            }
+            .stats-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+            .investigator-stats {
+                flex-direction: column;
+                gap: 4px;
+                font-size: 0.7rem;
+            }
+            .page {
+                padding-left: 16px;
+                padding-right: 16px;
+            }
+            .status-row .label {
+                width: 80px;
+                font-size: 0.7rem;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .stats-grid {
+                grid-template-columns: 1fr 1fr;
+                gap: 12px;
+            }
+            .stat-card {
+                padding: 16px;
+            }
+            .stat-card .stat-number {
+                font-size: 1.5rem;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <div class="logo-group">
+            <img src="/static/logo.png" alt="FARE" class="top-logo" onerror="this.src='https://placehold.co/42x42?text=FARE'" />
+            <div class="brand-text">
+                <div class="logo-name">DI Health</div>
+                <div class="logo-sub">Admin Dashboard</div>
+            </div>
+        </div>
+        <div class="header-right">
+            <a href="/static/case_detail.html" class="back-link">← Back to Cases</a>
+            <div class="user-info">
+                <div class="user-avatar" id="userAvatar">A</div>
+                <span class="user-name" id="userName">Loading...</span>
+            </div>
+            <button class="logout-btn" onclick="logout()">Logout</button>
+            <div class="status-chip">
+                <span class="status-dot"></span>
+                Online
+            </div>
+            <div class="date-chip" id="datechip"></div>
+        </div>
+    </header>
+
+    <div class="page">
+        <div class="dashboard-title">
+            <i class="bi bi-graph-up-arrow"></i> Admin Dashboard
+        </div>
+        <div class="dashboard-subtitle">
+            Overview of all investigators, cases, and system activity
+        </div>
+
+        <!-- Stats Grid -->
+        <div class="stats-grid" id="statsGrid">
+            <div class="stat-card purple">
+                <div class="stat-icon"><i class="bi bi-people"></i></div>
+                <div class="stat-number" id="totalUsers">0</div>
+                <div class="stat-label">Total Users</div>
+            </div>
+            <div class="stat-card blue">
+                <div class="stat-icon"><i class="bi bi-folder2-open"></i></div>
+                <div class="stat-number" id="totalCases">0</div>
+                <div class="stat-label">Total Cases</div>
+            </div>
+            <div class="stat-card amber">
+                <div class="stat-icon"><i class="bi bi-clock-history"></i></div>
+                <div class="stat-number" id="pendingCases">0</div>
+                <div class="stat-label">Pending Cases</div>
+            </div>
+            <div class="stat-card green">
+                <div class="stat-icon"><i class="bi bi-check-circle"></i></div>
+                <div class="stat-number" id="completedCases">0</div>
+                <div class="stat-label">Completed Cases</div>
+            </div>
+            <div class="stat-card red">
+                <div class="stat-icon"><i class="bi bi-exclamation-triangle"></i></div>
+                <div class="stat-number" id="nonWorkableCases">0</div>
+                <div class="stat-label">Non-Workable</div>
+            </div>
+        </div>
+
+        <!-- Dashboard Grid -->
+        <div class="dashboard-grid">
+            <!-- Investigator Performance -->
+            <div class="card">
+                <div class="card-header">
+                    <i class="bi bi-person-badge" style="color: var(--purple);"></i> Investigator Performance
+                </div>
+                <div class="card-body" id="investigatorList">
+                    <div style="text-align: center; padding: 40px; color: var(--ink-muted);">
+                        <i class="bi bi-arrow-repeat" style="font-size: 2rem; display: block; margin-bottom: 12px;"></i>
+                        Loading investigators...
+                    </div>
+                </div>
+            </div>
+
+            <!-- Status Breakdown -->
+            <div class="card">
+                <div class="card-header">
+                    <i class="bi bi-pie-chart" style="color: var(--blue);"></i> Case Status Breakdown
+                </div>
+                <div class="card-body">
+                    <div class="status-breakdown" id="statusBreakdown">
+                        <div style="text-align: center; padding: 40px; color: var(--ink-muted);">
+                            <i class="bi bi-arrow-repeat" style="font-size: 2rem; display: block; margin-bottom: 12px;"></i>
+                            Loading status...
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Recent Activity -->
+            <div class="card full-width">
+                <div class="card-header">
+                    <i class="bi bi-clock-history" style="color: var(--amber);"></i> Recent Activity
+                </div>
+                <div class="card-body" id="recentActivity">
+                    <div style="text-align: center; padding: 40px; color: var(--ink-muted);">
+                        <i class="bi bi-arrow-repeat" style="font-size: 2rem; display: block; margin-bottom: 12px;"></i>
+                        Loading activity...
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ============ AUTHENTICATION ============
+        const authToken = localStorage.getItem('auth_token');
+        const userStr = localStorage.getItem('user');
+
+        if (!authToken || !userStr) {
+            window.location.href = '/static/login.html';
+        }
+
+        let currentUser = null;
+        try {
+            currentUser = JSON.parse(userStr);
+            // Only admins can access this page
+            if (currentUser.role !== 'administrator') {
+                window.location.href = '/static/case_detail.html';
+            }
+            document.getElementById('userName').textContent = currentUser.name || currentUser.username;
+            document.getElementById('userAvatar').textContent = (currentUser.name || currentUser.username).charAt(0).toUpperCase();
+        } catch (e) {
+            window.location.href = '/static/login.html';
+        }
+
+        const d = new Date();
+        document.getElementById('datechip').textContent = d.toLocaleDateString('en-IN', {
+            weekday: 'short',
+            day: 'numeric',
+            month: 'short',
+            year: 'numeric'
+        });
+
+        function getHeaders() {
+            return {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${authToken}`
+            };
+        }
+
+        function showToast(message, type = 'success') {
+            const toast = document.createElement('div');
+            toast.className = `toast toast-${type}`;
+            toast.innerHTML = message;
+            document.body.appendChild(toast);
+            setTimeout(() => toast.remove(), 3000);
+        }
+
+        function logout() {
+            localStorage.removeItem('auth_token');
+            localStorage.removeItem('user');
+            window.location.href = '/static/login.html';
+        }
+
+        // ============ LOAD DASHBOARD DATA ============
+        async function loadDashboard() {
+            try {
+                // Get all cases (admin endpoint)
+                const casesResponse = await fetch('/api/cases/admin/all-cases', { headers: getHeaders() });
+                if (!casesResponse.ok) throw new Error('Failed to load cases');
+                const allCases = await casesResponse.json();
+
+                // Get all users
+                const usersResponse = await fetch('/api/auth/users', { headers: getHeaders() });
+                if (!usersResponse.ok) throw new Error('Failed to load users');
+                const usersData = await usersResponse.json();
+                const allUsers = usersData.users || [];
+
+                // Update stats
+                updateStats(allCases, allUsers);
+
+                // Update investigator list
+                updateInvestigators(allCases, allUsers);
+
+                // Update status breakdown
+                updateStatusBreakdown(allCases);
+
+                // Update recent activity
+                updateRecentActivity(allCases);
+
+            } catch (error) {
+                console.error('Error loading dashboard:', error);
+                showToast('Error loading dashboard data', 'error');
+            }
+        }
+
+        function updateStats(cases, users) {
+            const investigators = users.filter(u => u.role === 'investigator');
+            const total = cases.length;
+            const pending = cases.filter(c => c.status === 'pending').length;
+            const completed = cases.filter(c => c.status === 'completed').length;
+            const nonWorkable = cases.filter(c => c.status === 'non_workable' || c.status === 'failed').length;
+
+            document.getElementById('totalUsers').textContent = investigators.length;
+            document.getElementById('totalCases').textContent = total;
+            document.getElementById('pendingCases').textContent = pending;
+            document.getElementById('completedCases').textContent = completed;
+            document.getElementById('nonWorkableCases').textContent = nonWorkable;
+        }
+
+        function updateInvestigators(cases, users) {
+            const container = document.getElementById('investigatorList');
+            const investigators = users.filter(u => u.role === 'investigator');
+
+            if (investigators.length === 0) {
+                container.innerHTML = `
+                    <div style="text-align: center; padding: 30px; color: var(--ink-muted);">
+                        <i class="bi bi-person" style="font-size: 2rem; display: block; margin-bottom: 8px;"></i>
+                        No investigators found
+                    </div>
+                `;
+                return;
+            }
+
+            container.innerHTML = investigators.map(inv => {
+                const userCases = cases.filter(c => c.user_id === inv.id);
+                const total = userCases.length;
+                const pending = userCases.filter(c => c.status === 'pending').length;
+                const completed = userCases.filter(c => c.status === 'completed').length;
+                const scheduled = userCases.filter(c => c.status === 'scheduled').length;
+
+                const completionRate = total > 0 ? Math.round((completed / total) * 100) : 0;
+
+                return `
+                    <div class="investigator-item">
+                        <div class="investigator-name">
+                            <i class="bi bi-person-circle" style="color: var(--blue);"></i>
+                            ${inv.username}
+                            <span class="badge">${total} cases</span>
+                        </div>
+                        <div class="investigator-stats">
+                            <span>📋 ${pending} pending</span>
+                            <span>📅 ${scheduled} scheduled</span>
+                            <span>✅ ${completed} completed</span>
+                            <span>📊 ${completionRate}% done</span>
+                        </div>
+                    </div>
+                    <div class="progress-bar">
+                        <div class="fill fill-${completionRate >= 70 ? 'green' : completionRate >= 40 ? 'blue' : 'amber'}" style="width: ${completionRate}%;"></div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function updateStatusBreakdown(cases) {
+            const container = document.getElementById('statusBreakdown');
+            const total = cases.length;
+
+            if (total === 0) {
+                container.innerHTML = `
+                    <div style="text-align: center; padding: 30px; color: var(--ink-muted);">
+                        <i class="bi bi-inbox" style="font-size: 2rem; display: block; margin-bottom: 8px;"></i>
+                        No cases found
+                    </div>
+                `;
+                return;
+            }
+
+            const statuses = ['pending', 'scheduled', 'completed', 'non_workable'];
+            const labels = {
+                'pending': 'Pending',
+                'scheduled': 'Scheduled',
+                'completed': 'Completed',
+                'non_workable': 'Non-Workable'
+            };
+            const colors = {
+                'pending': 'fill-amber',
+                'scheduled': 'fill-blue',
+                'completed': 'fill-green',
+                'non_workable': 'fill-red'
+            };
+            const icons = {
+                'pending': '⏳',
+                'scheduled': '📅',
+                'completed': '✅',
+                'non_workable': '🚫'
+            };
+
+            container.innerHTML = statuses.map(status => {
+                const count = cases.filter(c => c.status === status).length;
+                const percentage = total > 0 ? Math.round((count / total) * 100) : 0;
+
+                return `
+                    <div class="status-row">
+                        <span class="label">${icons[status]} ${labels[status]}</span>
+                        <div class="bar-track">
+                            <div class="bar-fill ${colors[status]}" style="width: ${percentage}%;"></div>
+                        </div>
+                        <span class="count">${count}</span>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function updateRecentActivity(cases) {
+            const container = document.getElementById('recentActivity');
+
+            if (cases.length === 0) {
+                container.innerHTML = `
+                    <div style="text-align: center; padding: 30px; color: var(--ink-muted);">
+                        <i class="bi bi-clock" style="font-size: 2rem; display: block; margin-bottom: 8px;"></i>
+                        No recent activity
+                    </div>
+                `;
+                return;
+            }
+
+            // Sort by created_at descending and take latest 10
+            const sorted = [...cases].sort((a, b) =>
+                new Date(b.created_at) - new Date(a.created_at)
+            ).slice(0, 10);
+
+            const icons = {
+                'pending': '⏳',
+                'scheduled': '📅',
+                'completed': '✅',
+                'non_workable': '🚫'
+            };
+
+            container.innerHTML = sorted.map(c => {
+                const date = new Date(c.created_at);
+                const timeAgo = getTimeAgo(date);
+                const icon = icons[c.status] || '📋';
+
+                return `
+                    <div class="activity-item">
+                        <div class="activity-icon ${c.status === 'completed' ? 'completed' : c.status === 'scheduled' ? 'scheduled' : 'created'}">
+                            ${icon}
+                        </div>
+                        <div class="activity-text">
+                            <span class="highlight">${c.case_id}</span>
+                            — ${c.name}
+                            <span style="color: var(--ink-muted); font-size: 0.75rem;">
+                                (${c.status})
+                            </span>
+                        </div>
+                        <div class="activity-time">${timeAgo}</div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function getTimeAgo(date) {
+            const now = new Date();
+            const diff = now - date;
+            const minutes = Math.floor(diff / 60000);
+            const hours = Math.floor(diff / 3600000);
+            const days = Math.floor(diff / 86400000);
+
+            if (minutes < 1) return 'Just now';
+            if (minutes < 60) return `${minutes}m ago`;
+            if (hours < 24) return `${hours}h ago`;
+            return `${days}d ago`;
+        }
+
+        // ============ REFRESH ============
+        document.addEventListener('keydown', function(e) {
+            if (e.ctrlKey && e.key === 'r') {
+                e.preventDefault();
+                loadDashboard();
+                showToast('🔄 Dashboard refreshed', 'info');
+            }
+        });
+
+        // ============ INITIALIZE ============
+        loadDashboard();
+        setInterval(loadDashboard, 60000); // Refresh every minute
+    </script>
+
+</body>
+</html>

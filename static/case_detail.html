@@ -1,0 +1,1733 @@
+<!-- static/case_detail.html - COMPLETELY FIXED VERSION -->
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DI Health — Case Management</title>
+    <link
+        href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600;9..40,700&family=JetBrains+Mono:wght@400;500&display=swap"
+        rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
+    <style>
+        *,
+        *::before,
+        *::after {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --ink: #0f1419;
+            --ink-mid: #374151;
+            --ink-soft: #6b7280;
+            --ink-muted: #9ca3af;
+            --surface: #ffffff;
+            --surface-2: #f8f9fb;
+            --surface-3: #f1f3f7;
+            --border: #e4e7ec;
+            --border-2: #d1d5db;
+            --blue: #1d4ed8;
+            --blue-light: #3b82f6;
+            --blue-dim: #eff6ff;
+            --blue-soft: #bfdbfe;
+            --green: #16a34a;
+            --green-dim: #f0fdf4;
+            --green-soft: #bbf7d0;
+            --purple: #7c3aed;
+            --purple-dim: #f5f3ff;
+            --purple-soft: #ddd6fe;
+            --red: #dc2626;
+            --red-dim: #fef2f2;
+            --amber: #d97706;
+            --amber-dim: #fffbeb;
+            --radius: 16px;
+            --radius-sm: 10px;
+        }
+
+        html,
+        body {
+            height: 100%;
+            font-family: 'DM Sans', system-ui, sans-serif;
+            background: var(--surface-2);
+            color: var(--ink);
+        }
+
+        .create-doc-area {
+            border: 2px dashed var(--border);
+            border-radius: 10px;
+            padding: 12px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.2s;
+            background: var(--surface);
+            margin-top: 5px;
+        }
+
+        .create-doc-area:hover {
+            border-color: var(--blue);
+            background: var(--blue-dim);
+        }
+
+        .create-doc-area i {
+            font-size: 1rem;
+            color: var(--ink-muted);
+            margin-right: 6px;
+        }
+
+        .create-doc-area span {
+            font-size: 0.75rem;
+            color: var(--ink-muted);
+        }
+
+        .create-doc-area:hover i,
+        .create-doc-area:hover span {
+            color: var(--blue);
+        }
+
+        .doc-preview-list {
+            margin-top: 8px;
+            max-height: 80px;
+            overflow-y: auto;
+        }
+
+        .doc-preview-item {
+            font-size: 0.7rem;
+            padding: 3px 8px;
+            background: var(--surface-2);
+            border-radius: 4px;
+            margin-bottom: 3px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .doc-preview-remove {
+            cursor: pointer;
+            color: var(--red);
+            font-size: 0.7rem;
+        }
+
+        .doc-preview-remove:hover {
+            opacity: 0.7;
+        }
+
+        header {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 64px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 26px;
+            background: rgba(255, 255, 255, 0.92);
+            backdrop-filter: blur(12px);
+            border-bottom: 1px solid var(--border);
+            z-index: 100;
+            box-shadow: 0 1px 0 var(--border), 0 4px 20px rgba(0, 0, 0, 0.03);
+        }
+
+        .logo-group {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .top-logo {
+            height: 42px;
+            width: auto;
+            object-fit: contain;
+            display: block;
+        }
+
+        .brand-text {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+
+        .logo-name {
+            font-family: 'DM Serif Display', serif;
+            font-size: 1.15rem;
+            line-height: 1;
+            color: var(--ink);
+        }
+
+        .logo-sub {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.58rem;
+            letter-spacing: 1.8px;
+            text-transform: uppercase;
+            color: var(--ink-muted);
+            margin-top: 4px;
+        }
+
+        .header-right {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .user-info {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            background: var(--surface-2);
+            padding: 5px 12px;
+            border-radius: 30px;
+            border: 1px solid var(--border);
+        }
+
+        .user-avatar {
+            width: 30px;
+            height: 30px;
+            background: var(--blue-dim);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            color: var(--blue);
+        }
+
+        .user-name {
+            font-size: 0.8rem;
+            font-weight: 500;
+        }
+
+        .back-link {
+            background: rgba(0, 0, 0, 0.05);
+            border: none;
+            cursor: pointer;
+            color: var(--ink-mid);
+            font-size: 0.8rem;
+            padding: 6px 14px;
+            border-radius: 8px;
+            transition: all 0.2s;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .back-link:hover {
+            background: var(--surface-3);
+            color: var(--ink);
+        }
+
+        .logout-btn {
+            background: none;
+            border: none;
+            cursor: pointer;
+            color: var(--ink-muted);
+            font-size: 0.75rem;
+            padding: 4px 8px;
+            border-radius: 6px;
+            transition: all 0.2s;
+        }
+
+        .logout-btn:hover {
+            background: var(--red-dim);
+            color: var(--red);
+        }
+
+        .status-chip {
+            display: flex;
+            align-items: center;
+            gap: 7px;
+            padding: 5px 13px;
+            background: var(--green-dim);
+            border: 1px solid rgba(22, 163, 74, 0.2);
+            border-radius: 30px;
+            font-size: 0.74rem;
+            font-weight: 500;
+            color: var(--green);
+        }
+
+        .status-dot {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: var(--green);
+            animation: pulse 2.2s ease-in-out infinite;
+        }
+
+        @keyframes pulse {
+
+            0%,
+            100% {
+                opacity: 1;
+                transform: scale(1);
+            }
+
+            50% {
+                opacity: 0.45;
+                transform: scale(1.45);
+            }
+        }
+
+        .date-chip {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.68rem;
+            color: var(--blue);
+            background: var(--blue-dim);
+            border: 1px solid rgba(29, 78, 216, 0.18);
+            padding: 4px 12px;
+            border-radius: 6px;
+            letter-spacing: 0.4px;
+        }
+
+        .page {
+            min-height: 100vh;
+            padding-top: 64px;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .main-container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 32px 24px;
+            width: 100%;
+        }
+
+        .cases-panel {
+            background: var(--surface);
+            border-radius: var(--radius);
+            border: 1px solid var(--border);
+            overflow: hidden;
+            box-shadow: 0 2px 12px rgba(0, 0, 0, 0.04);
+        }
+
+        .panel-header {
+            padding: 20px 24px;
+            border-bottom: 1px solid var(--border);
+            background: var(--surface-2);
+        }
+
+        .panel-header h3 {
+            font-family: 'DM Serif Display', serif;
+            font-size: 1.2rem;
+            color: var(--ink);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .add-case-form {
+            padding: 24px;
+            background: var(--surface-2);
+            border-bottom: 1px solid var(--border);
+        }
+
+        .form-row {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 16px;
+            margin-bottom: 16px;
+        }
+
+        .form-group {
+            margin-bottom: 0;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 6px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            color: var(--ink-mid);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .form-group input,
+        .form-group select {
+            width: 100%;
+            padding: 10px 14px;
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            font-size: 0.9rem;
+            font-family: 'DM Sans', sans-serif;
+            background: var(--surface);
+            transition: all 0.2s;
+        }
+
+        .form-group input:focus,
+        .form-group select:focus {
+            outline: none;
+            border-color: var(--blue);
+            box-shadow: 0 0 0 3px rgba(29, 78, 216, 0.1);
+        }
+
+        .btn-primary {
+            background: var(--blue);
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 10px;
+            cursor: pointer;
+            font-size: 0.85rem;
+            font-weight: 600;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            transition: all 0.2s;
+        }
+
+        .btn-primary:hover {
+            background: #1a3d9e;
+            transform: translateY(-1px);
+        }
+
+        .btn-success {
+            background: var(--green);
+        }
+
+        .cases-table-container {
+            padding: 20px 24px;
+            overflow-x: auto;
+        }
+
+        .cases-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .cases-table th {
+            text-align: left;
+            padding: 14px 12px;
+            background: var(--surface-2);
+            font-size: 0.75rem;
+            font-weight: 600;
+            color: var(--ink-mid);
+            border-bottom: 1px solid var(--border);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .cases-table td {
+            padding: 14px 12px;
+            border-bottom: 1px solid var(--border);
+            font-size: 0.85rem;
+            color: var(--ink-mid);
+        }
+
+        .cases-table tr {
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .cases-table tr:hover {
+            background: var(--surface-2);
+        }
+
+        .status-badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 0.7rem;
+            font-weight: 600;
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        .status-pending {
+            background: var(--amber-dim);
+            color: var(--amber);
+            border: 1px solid rgba(217, 119, 6, 0.2);
+        }
+
+        .status-scheduled {
+            background: var(--blue-dim);
+            color: var(--blue);
+            border: 1px solid rgba(29, 78, 216, 0.2);
+        }
+
+        .status-completed {
+            background: var(--green-dim);
+            color: var(--green);
+            border: 1px solid rgba(22, 163, 74, 0.2);
+        }
+
+        .status-non_workable {
+            background: var(--red-dim);
+            color: var(--red);
+            border: 1px solid rgba(220, 38, 38, 0.2);
+        }
+
+        .action-buttons {
+            display: flex;
+            gap: 8px;
+        }
+
+        .action-btn {
+            padding: 5px 12px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 0.7rem;
+            font-weight: 500;
+            transition: all 0.2s;
+        }
+
+        .btn-view {
+            background: var(--blue-dim);
+            color: var(--blue);
+        }
+
+        .btn-edit {
+            background: var(--green-dim);
+            color: var(--green);
+        }
+
+        .btn-view:hover {
+            background: var(--blue-soft);
+            transform: translateY(-1px);
+        }
+
+        .btn-edit:hover {
+            background: var(--green-soft);
+            transform: translateY(-1px);
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            backdrop-filter: blur(4px);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .modal.active {
+            display: flex;
+        }
+
+        .modal-content {
+            background: var(--surface);
+            border-radius: var(--radius);
+            width: 90%;
+            max-width: 800px;
+            max-height: 85vh;
+            overflow-y: auto;
+            animation: slideIn 0.3s ease;
+            border: 1px solid var(--border);
+        }
+
+        @keyframes slideIn {
+            from {
+                transform: translateY(-30px);
+                opacity: 0;
+            }
+
+            to {
+                transform: translateY(0);
+                opacity: 1;
+            }
+        }
+
+        .modal-header {
+            padding: 20px 24px;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: var(--surface-2);
+        }
+
+        .modal-header h3 {
+            font-family: 'DM Serif Display', serif;
+            font-size: 1.2rem;
+            color: var(--ink);
+        }
+
+        .modal-actions {
+            display: flex;
+            gap: 10px;
+        }
+
+        .close-modal {
+            background: none;
+            border: none;
+            font-size: 1.5rem;
+            cursor: pointer;
+            color: var(--ink-muted);
+            transition: all 0.2s;
+        }
+
+        .close-modal:hover {
+            color: var(--ink);
+        }
+
+        .modal-body {
+            padding: 24px;
+        }
+
+        .detail-section {
+            margin-bottom: 24px;
+            padding-bottom: 24px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .detail-section:last-child {
+            border-bottom: none;
+            margin-bottom: 0;
+            padding-bottom: 0;
+        }
+
+        .detail-section h4 {
+            font-size: 0.9rem;
+            font-weight: 600;
+            color: var(--ink);
+            margin-bottom: 16px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .detail-row {
+            display: flex;
+            margin-bottom: 12px;
+        }
+
+        .detail-label {
+            width: 140px;
+            font-weight: 500;
+            color: var(--ink-muted);
+            font-size: 0.8rem;
+        }
+
+        .detail-value {
+            flex: 1;
+            color: var(--ink-mid);
+            font-size: 0.85rem;
+        }
+
+        .edit-input,
+        .edit-select {
+            width: 100%;
+            max-width: 300px;
+            padding: 8px 12px;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            font-family: 'DM Sans', sans-serif;
+            font-size: 0.85rem;
+        }
+
+        .upload-area {
+            border: 2px dashed var(--border);
+            border-radius: 12px;
+            padding: 30px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.2s;
+            background: var(--surface-2);
+        }
+
+        .upload-area:hover {
+            border-color: var(--blue);
+            background: var(--blue-dim);
+        }
+
+        .upload-area i {
+            font-size: 2rem;
+            color: var(--ink-muted);
+            margin-bottom: 10px;
+        }
+
+        .upload-area:hover i {
+            color: var(--blue);
+        }
+
+        .upload-area p {
+            color: var(--ink-muted);
+            font-size: 0.85rem;
+        }
+
+        .doc-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 12px;
+            background: var(--surface-2);
+            border-radius: 8px;
+            margin-bottom: 8px;
+            border: 1px solid var(--border);
+        }
+
+        .doc-info {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .doc-icon {
+            font-size: 1.2rem;
+        }
+
+        .doc-name {
+            font-size: 0.85rem;
+            color: var(--ink);
+        }
+
+        .doc-date {
+            font-size: 0.7rem;
+            color: var(--ink-muted);
+            margin-top: 2px;
+        }
+
+        .doc-actions {
+            display: flex;
+            gap: 8px;
+        }
+
+        .doc-btn {
+            background: none;
+            border: none;
+            cursor: pointer;
+            padding: 4px 8px;
+            border-radius: 6px;
+            transition: all 0.2s;
+        }
+
+        .doc-view {
+            color: var(--blue);
+        }
+
+        .doc-view:hover {
+            background: var(--blue-dim);
+        }
+
+        .doc-delete {
+            color: var(--red);
+        }
+
+        .doc-delete:hover {
+            background: var(--red-dim);
+        }
+
+        .question-item {
+            background: var(--surface-2);
+            padding: 14px;
+            margin-bottom: 12px;
+            border-radius: 10px;
+            border: 1px solid var(--border);
+        }
+
+        .question-text {
+            font-weight: 600;
+            margin-bottom: 8px;
+            font-size: 0.85rem;
+            color: var(--ink);
+        }
+
+        .form-control {
+            width: 100%;
+            padding: 10px 12px;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            font-family: 'DM Sans', sans-serif;
+            font-size: 0.85rem;
+            resize: vertical;
+            background: var(--surface);
+        }
+
+        .toast {
+            position: fixed;
+            bottom: 24px;
+            right: 24px;
+            padding: 12px 20px;
+            border-radius: 12px;
+            color: white;
+            z-index: 1100;
+            animation: slideIn 0.3s ease;
+            font-size: 0.85rem;
+            font-weight: 500;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        }
+
+        .toast-success {
+            background: var(--green);
+        }
+
+        .toast-error {
+            background: var(--red);
+        }
+
+        .toast-info {
+            background: var(--blue);
+        }
+
+        .loading {
+            text-align: center;
+            padding: 60px;
+            color: var(--ink-muted);
+        }
+
+        .spinner {
+            border: 3px solid var(--surface-3);
+            border-top: 3px solid var(--blue);
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 12px;
+        }
+
+        @keyframes spin {
+            0% {
+                transform: rotate(0deg);
+            }
+
+            100% {
+                transform: rotate(360deg);
+            }
+        }
+
+        @media (max-width: 768px) {
+            .form-row {
+                grid-template-columns: 1fr;
+            }
+
+            .detail-row {
+                flex-direction: column;
+            }
+
+            .detail-label {
+                width: 100%;
+                margin-bottom: 4px;
+            }
+
+            .main-container {
+                padding: 20px 16px;
+            }
+
+            .user-info .user-name {
+                display: none;
+            }
+
+            .edit-input,
+            .edit-select {
+                max-width: 100%;
+            }
+        }
+
+        /* Search Bar Styles */
+        .search-container {
+            padding: 16px 24px;
+            background: var(--surface-2);
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            gap: 12px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .search-box {
+            flex: 1;
+            min-width: 250px;
+            position: relative;
+        }
+
+        .search-box i {
+            position: absolute;
+            left: 12px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--ink-muted);
+            font-size: 1rem;
+        }
+
+        .search-box input {
+            width: 100%;
+            padding: 10px 12px 10px 38px;
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            font-size: 0.85rem;
+            font-family: 'DM Sans', sans-serif;
+            background: var(--surface);
+            transition: all 0.2s;
+        }
+
+        .search-box input:focus {
+            outline: none;
+            border-color: var(--blue);
+            box-shadow: 0 0 0 3px rgba(29, 78, 216, 0.1);
+        }
+
+        .filter-group {
+            display: flex;
+            gap: 10px;
+        }
+
+        .filter-select {
+            padding: 10px 14px;
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            font-size: 0.85rem;
+            font-family: 'DM Sans', sans-serif;
+            background: var(--surface);
+            cursor: pointer;
+        }
+
+        .filter-select:focus {
+            outline: none;
+            border-color: var(--blue);
+        }
+
+        .clear-search {
+            background: var(--surface-3);
+            border: 1px solid var(--border);
+            padding: 10px 16px;
+            border-radius: 10px;
+            cursor: pointer;
+            font-size: 0.8rem;
+            color: var(--ink-mid);
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .clear-search:hover {
+            background: var(--surface);
+            border-color: var(--red);
+            color: var(--red);
+        }
+
+        .search-stats {
+            font-size: 0.75rem;
+            color: var(--ink-muted);
+            padding: 0 8px;
+        }
+    </style>
+</head>
+
+<body>
+
+    <header>
+        <div class="logo-group">
+            <img src="/static/logo.png" alt="FARE" class="top-logo"
+                onerror="this.src='https://placehold.co/42x42?text=FARE'" />
+            <div class="brand-text">
+                <div class="logo-name">DI Health</div>
+                <div class="logo-sub">Case Management</div>
+            </div>
+        </div>
+        <div class="header-right">
+            <a href="/static/dashboard.html" class="back-link">← Back to Command Centre</a>
+            <div class="user-info">
+                <div class="user-avatar" id="userAvatar">A</div>
+                <span class="user-name" id="userName">Loading...</span>
+            </div>
+            <button class="logout-btn" onclick="logout()">Logout</button>
+            <div class="status-chip">
+                <span class="status-dot"></span>
+                Online
+            </div>
+            <div class="date-chip" id="datechip"></div>
+        </div>
+        <div id="adminDashboardContainer" style="display: none; margin-left: 8px;">
+    <a href="/static/admin_dashboard.html" class="btn-admin-dashboard" style="
+        background: linear-gradient(135deg, #7c3aed, #6d28d9);
+        color: white;
+        border: none;
+        padding: 6px 16px;
+        border-radius: 8px;
+        cursor: pointer;
+        font-size: 0.75rem;
+        font-weight: 600;
+        text-decoration: none;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        transition: all 0.2s;
+        font-family: 'DM Sans', sans-serif;
+    ">
+        <i class="bi bi-graph-up-arrow"></i> Admin Dashboard
+    </a>
+</div><div id="adminDashboardContainer" style="display: none; margin-left: 8px;">
+    <a href="/static/admin_dashboard.html" class="btn-admin-dashboard" style="
+        background: linear-gradient(135deg, #7c3aed, #6d28d9);
+        color: white;
+        border: none;
+        padding: 6px 16px;
+        border-radius: 8px;
+        cursor: pointer;
+        font-size: 0.75rem;
+        font-weight: 600;
+        text-decoration: none;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        transition: all 0.2s;
+        font-family: 'DM Sans', sans-serif;
+    ">
+        <i class="bi bi-graph-up-arrow"></i> Admin Dashboard
+    </a>
+</div>
+    </header>
+
+    <div class="page">
+        <div class="main-container">
+            <div class="cases-panel">
+                <div class="panel-header">
+                    <h3><i class="bi bi-folder2-open"></i> Case Management</h3>
+                </div>
+                <!-- Search and Filter Bar -->
+                <div class="search-container">
+                    <div class="search-box">
+                        <i class="bi bi-search"></i>
+                        <input type="text" id="searchInput"
+                            placeholder="Search by Case ID, Patient Name, or Phone Number...">
+                    </div>
+                    <div class="filter-group">
+                        <select id="statusFilter" class="filter-select">
+                            <option value="all">All Status</option>
+                            <option value="pending">Pending</option>
+                            <option value="scheduled">Scheduled</option>
+                            <option value="completed">Completed</option>
+                            <option value="non_workable">Non-Workable</option>
+                        </select>
+                        <select id="categoryFilter" class="filter-select">
+                            <option value="all">All Categories</option>
+                            <option value="normal">Normal Health Claim</option>
+                            <option value="pre_existing">Pre-existing Disease</option>
+                        </select>
+                        <button id="clearSearchBtn" class="clear-search">
+                            <i class="bi bi-x-circle"></i> Clear
+                        </button>
+                    </div>
+                    <div id="searchStats" class="search-stats"></div>
+                </div>
+                
+                <div class="add-case-form">
+                    <form id="addCaseForm">
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>Full Name *</label>
+                                <input type="text" id="caseName" required placeholder="Enter patient name">
+                            </div>
+                            <div class="form-group">
+                                <label>Phone Number *</label>
+                                <input type="tel" id="casePhone" placeholder="9876543210" required>
+                            </div>
+                            <div class="form-group">
+                                <label>Category *</label>
+                                <select id="caseCategory">
+                                    <option value="normal">Normal Health Claim</option>
+                                    <option value="pre_existing">Pre-existing Disease</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>Claim ID</label>
+                                <input type="text" id="caseClaimId" placeholder="Optional">
+                            </div>
+                            <div class="form-group">
+                                <label>Insurance Company</label>
+                                <input type="text" id="caseCompany" placeholder="Optional">
+                            </div>
+                            <div class="form-group">
+                                <label>Documents (Optional)</label>
+                                <div class="create-doc-area"
+                                    onclick="document.getElementById('createFileInput').click()">
+                                    <i class="bi bi-cloud-upload"></i>
+                                    <span>Click to upload documents (PDF, Images)</span>
+                                </div>
+                                <input type="file" id="createFileInput" style="display: none" multiple
+                                    accept="image/*,.pdf,.doc,.docx" onchange="prependCreateFiles()">
+                                <div id="createDocPreview" class="doc-preview-list"></div>
+                            </div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <button type="submit" class="btn-primary" id="createCaseBtn">
+                                    <i class="bi bi-plus-circle"></i> Create Case
+                                </button>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+
+                <div class="cases-table-container">
+                    <table class="cases-table">
+                        <thead>
+                            <tr>
+                                <th>Case ID</th>
+                                <th>Patient Name</th>
+                                <th>Phone</th>
+                                <th>Category</th>
+                                <th>Status</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="casesTableBody">
+                            <tr>
+                                <td colspan="6" class="loading">
+                                    <div class="spinner"></div>Loading cases...</td>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Case Detail Modal -->
+    <div id="caseModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="modalTitle">Case Details</h3>
+                <div class="modal-actions">
+                    <button id="editModeBtn" class="btn-primary" style="background: var(--amber);"
+                        onclick="toggleEditMode()">✏️ Edit</button>
+                    <button class="close-modal" onclick="closeModal()">&times;</button>
+                </div>
+            </div>
+            <div class="modal-body" id="modalBody">Loading...</div>
+            <div style="padding: 16px 24px 24px; display: flex; justify-content: flex-end; gap: 12px;" id="modalFooter">
+                <button class="btn-primary btn-success" onclick="saveCaseEdits()" style="display: none;"
+                    id="saveEditBtn">💾 Save Changes</button>
+                <button class="btn-primary" onclick="cancelEdit()" style="display: none; background: var(--ink-muted);"
+                    id="cancelEditBtn">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Authentication
+        const authToken = localStorage.getItem('auth_token');
+        const userStr = localStorage.getItem('user');
+
+        if (!authToken || !userStr) window.location.href = '/static/login.html';
+        // ============ WEBSOCKET REAL-TIME LOGS ============
+        let ws = null;
+        let reconnectAttempts = 0;
+        const maxReconnectAttempts = 5;
+        let currentUser = null;
+        let currentCaseData = null;
+        let isEditMode = false;
+        let pendingCreateFiles = [];
+        let allCases = []; // Store all cases for filtering
+        let currentSearchTerm = '';
+        let currentStatusFilter = 'all';
+        let currentCategoryFilter = 'all';
+        try {
+            currentUser = JSON.parse(userStr);
+            document.getElementById('userName').textContent = currentUser.name || currentUser.username;
+            document.getElementById('userAvatar').textContent = (currentUser.name || currentUser.username).charAt(0).toUpperCase();
+        } catch (e) {
+            window.location.href = '/static/login.html';
+        }
+
+        const d = new Date();
+        document.getElementById('datechip').textContent = d.toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' });
+
+        function getHeaders() {
+            return { 'Content-Type': 'application/json', 'Authorization': `Bearer ${authToken}` };
+        }
+
+        function showToast(message, type = 'success') {
+            const toast = document.createElement('div');
+            toast.className = `toast toast-${type}`;
+            toast.innerHTML = message;
+            document.body.appendChild(toast);
+            setTimeout(() => toast.remove(), 3000);
+        }
+
+        function logout() {
+            localStorage.removeItem('auth_token');
+            localStorage.removeItem('user');
+            window.location.href = '/static/login.html';
+        }
+        function connectWebSocket() {
+    // Use WebSocket URL (change localhost to your server if needed)
+    const wsUrl = `ws://localhost:8000/api/logs/ws`;
+    
+    try {
+        ws = new WebSocket(wsUrl);
+        
+        ws.onopen = function() {
+            console.log('✅ WebSocket connected');
+            reconnectAttempts = 0;
+            // Show a small indicator
+            showToast('Real-time updates connected', 'info');
+        };
+        
+        ws.onmessage = function(event) {
+            const data = JSON.parse(event.data);
+            console.log('📨 Log received:', data);
+            
+            // Handle different message types
+            switch(data.type) {
+                case 'case_created':
+                    showToast(`📋 ${data.message}`, 'success');
+                    // Refresh cases automatically
+                    loadCases();
+                    break;
+                case 'case_updated':
+                    showToast(`✏️ ${data.message}`, 'info');
+                    loadCases();
+                    break;
+                case 'document_uploaded':
+                    showToast(`📎 ${data.message}`, 'success');
+                    break;
+                case 'log':
+                    console.log('Log:', data.message);
+                    break;
+                default:
+                    console.log('Unknown message type:', data);
+            }
+        };
+        
+        ws.onerror = function(error) {
+            console.error('WebSocket error:', error);
+        };
+        
+        ws.onclose = function() {
+            console.log('WebSocket disconnected');
+            // Try to reconnect
+            if (reconnectAttempts < maxReconnectAttempts) {
+                reconnectAttempts++;
+                setTimeout(connectWebSocket, 3000);
+            }
+        };
+    } catch (error) {
+        console.error('WebSocket connection failed:', error);
+    }
+}
+
+// Connect WebSocket on page load
+connectWebSocket();
+
+// Clean up on page unload
+window.addEventListener('beforeunload', function() {
+    if (ws && ws.readyState === WebSocket.OPEN) {
+        ws.close();
+    }
+});
+        async function loadCases() {
+    try {
+        // If admin and viewing all, use admin endpoint
+        let url = '/api/cases';
+        if (adminViewAll) {
+            url = '/api/cases/admin/all-cases';
+        }
+        
+        const response = await fetch(url, { headers: getHeaders() });
+        if (!response.ok) throw new Error('Failed to load cases');
+        allCases = await response.json();
+
+        // Apply filters and render
+        filterAndRenderCases();
+    } catch (error) {
+        document.getElementById('casesTableBody').innerHTML = '<tr><td colspan="6" style="text-align: center; color: red;">Error loading cases<\/td><\/tr>';
+    }
+}
+
+        // New function to filter and render cases
+        function filterAndRenderCases() {
+            let filteredCases = [...allCases];
+
+            // Apply search filter (Case ID, Name, Phone)
+            if (currentSearchTerm) {
+                const searchLower = currentSearchTerm.toLowerCase();
+                filteredCases = filteredCases.filter(c =>
+                    c.case_id.toLowerCase().includes(searchLower) ||
+                    c.name.toLowerCase().includes(searchLower) ||
+                    c.phone_number.includes(searchLower)
+                );
+            }
+
+            // Apply status filter
+            if (currentStatusFilter !== 'all') {
+                filteredCases = filteredCases.filter(c => c.status === currentStatusFilter);
+            }
+
+            // Apply category filter
+            if (currentCategoryFilter !== 'all') {
+                filteredCases = filteredCases.filter(c => c.category === currentCategoryFilter);
+            }
+
+            // Update search stats
+            const statsDiv = document.getElementById('searchStats');
+            if (filteredCases.length !== allCases.length) {
+                statsDiv.innerHTML = `Showing ${filteredCases.length} of ${allCases.length} cases`;
+            } else {
+                statsDiv.innerHTML = `${allCases.length} total cases`;
+            }
+
+            // Render table
+            const tbody = document.getElementById('casesTableBody');
+            if (filteredCases.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; padding: 60px;">🔍 No cases match your search criteria.<\/td><\/tr>';
+                return;
+            }
+
+            tbody.innerHTML = filteredCases.map(c => `
+        <tr onclick="window.location.href='/static/case_info.html?id=${c.case_id}'">
+            <td><strong>${c.case_id}</strong><\/td>
+            <td>${escapeHtml(c.name)}<\/td>
+            <td>${c.phone_number}<\/td>
+            <td>${c.category === 'normal' ? 'Normal' : 'Pre-existing'}<\/td>
+            <td><span class="status-badge status-${c.status}">${c.status}<\/span><\/td>
+            <td onclick="event.stopPropagation()">
+                <div class="action-buttons">
+                    <button class="action-btn btn-view" onclick="window.location.href='/static/case_info.html?id=${c.case_id}'">📄 View<\/button>
+                    <button class="action-btn btn-edit" onclick="editCase('${c.case_id}')">✏️ Edit<\/button>
+                </div>
+            <\/td>
+        <\/tr>
+    `).join('');
+        }
+
+        // Add event listeners for search and filters
+        function initSearchFilters() {
+            const searchInput = document.getElementById('searchInput');
+            const statusFilter = document.getElementById('statusFilter');
+            const categoryFilter = document.getElementById('categoryFilter');
+            const clearBtn = document.getElementById('clearSearchBtn');
+
+            if (searchInput) {
+                searchInput.addEventListener('input', (e) => {
+                    currentSearchTerm = e.target.value;
+                    filterAndRenderCases();
+                });
+            }
+
+            if (statusFilter) {
+                statusFilter.addEventListener('change', (e) => {
+                    currentStatusFilter = e.target.value;
+                    filterAndRenderCases();
+                });
+            }
+
+            if (categoryFilter) {
+                categoryFilter.addEventListener('change', (e) => {  // ← FIXED: Added '=>'
+                    currentCategoryFilter = e.target.value;
+                    filterAndRenderCases();
+                });
+            }
+
+            if (clearBtn) {
+                clearBtn.addEventListener('click', () => {
+                    if (searchInput) searchInput.value = '';
+                    if (statusFilter) statusFilter.value = 'all';
+                    if (categoryFilter) categoryFilter.value = 'all';
+                    currentSearchTerm = '';
+                    currentStatusFilter = 'all';
+                    currentCategoryFilter = 'all';
+                    filterAndRenderCases();
+                    showToast('Filters cleared', 'info');
+                });
+            }
+        }
+
+        // ============ CREATE CASE WITH DOCUMENTS ============
+
+        function prependCreateFiles() {
+            const fileInput = document.getElementById('createFileInput');
+            const files = Array.from(fileInput.files);
+
+            files.forEach(file => {
+                if (!pendingCreateFiles.some(f => f.name === file.name)) {
+                    pendingCreateFiles.push(file);
+                }
+            });
+
+            updateCreatePreview();
+            fileInput.value = '';
+        }
+
+        function updateCreatePreview() {
+            const previewDiv = document.getElementById('createDocPreview');
+            if (pendingCreateFiles.length === 0) {
+                previewDiv.innerHTML = '';
+                return;
+            }
+
+            previewDiv.innerHTML = pendingCreateFiles.map((file, index) => `
+            <div class="doc-preview-item">
+                <span><i class="bi bi-file-earmark"></i> ${file.name} (${(file.size / 1024).toFixed(1)} KB)</span>
+                <span class="doc-preview-remove" onclick="removeCreateFile(${index})">✕</span>
+            </div>
+        `).join('');
+        }
+
+        function removeCreateFile(index) {
+            pendingCreateFiles.splice(index, 1);
+            updateCreatePreview();
+        }
+
+        // THIS IS THE CORRECT UPLOAD FUNCTION - USING REAL FILE UPLOAD
+        async function uploadDocumentsForCase(caseId) {
+            if (pendingCreateFiles.length === 0) return 0;
+
+            let successCount = 0;
+            for (const file of pendingCreateFiles) {
+                const formData = new FormData();
+                formData.append('file', file);
+
+                try {
+                    const response = await fetch(`/api/cases/${caseId}/upload`, {
+                        method: 'POST',
+                        headers: { 'Authorization': `Bearer ${authToken}` },
+                        body: formData
+                    });
+                    if (response.ok) successCount++;
+                } catch (error) {
+                    console.error(`Error uploading ${file.name}:`, error);
+                }
+            }
+            return successCount;
+        }
+
+        // Create new case - WITH BUTTON ID FIXED
+        document.getElementById('addCaseForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const createBtn = document.getElementById('createCaseBtn');
+            if (createBtn) {
+                createBtn.disabled = true;
+                createBtn.innerHTML = '<i class="bi bi-hourglass-split"></i> Creating...';
+            }
+
+            const data = {
+                name: document.getElementById('caseName').value,
+                phone_number: document.getElementById('casePhone').value,
+                category: document.getElementById('caseCategory').value,
+                claim_id: document.getElementById('caseClaimId').value || null,
+                company_name: document.getElementById('caseCompany').value || null
+            };
+
+            try {
+                const response = await fetch('/api/cases', { method: 'POST', headers: getHeaders(), body: JSON.stringify(data) });
+
+                if (response.ok) {
+                    const result = await response.json();
+                    const uploadedCount = await uploadDocumentsForCase(result.case_id);
+
+                    showToast(`✅ Case ${result.case_id} created with ${uploadedCount} document(s)!`);
+
+                    document.getElementById('addCaseForm').reset();
+                    pendingCreateFiles = [];
+                    updateCreatePreview();
+                    loadCases();
+                } else {
+                    const error = await response.json();
+                    showToast(error.detail || 'Failed to create case', 'error');
+                }
+            } catch (error) {
+                showToast('Error creating case', 'error');
+            } finally {
+                if (createBtn) {
+                    createBtn.disabled = false;
+                    createBtn.innerHTML = '<i class="bi bi-plus-circle"></i> Create Case';
+                }
+            }
+        });
+
+        // ============ VIEW/EDIT CASE FUNCTIONS ============
+
+        async function viewCaseDetails(caseId) { isEditMode = false; await loadAndShowCase(caseId, false); }
+        async function editCase(caseId) { isEditMode = true; await loadAndShowCase(caseId, true); }
+
+        async function loadDocuments(caseId) {
+            try {
+                const response = await fetch(`/api/cases/${caseId}/documents`, { headers: getHeaders() });
+                if (!response.ok) throw new Error('Failed to load documents');
+                const documents = await response.json();
+
+                const container = document.getElementById('documentsList');
+                if (!container) return;
+
+                if (documents.length === 0) {
+                    container.innerHTML = `<div style="text-align: center; color: var(--ink-muted); padding: 20px;"><i class="bi bi-folder"></i> No documents uploaded yet<\/div>`;
+                    return;
+                }
+
+                container.innerHTML = documents.map(doc => `
+                <div class="doc-item" id="doc-${doc.id}">
+                    <div class="doc-info">
+                        <div class="doc-icon">${doc.file_type === 'image' ? '<i class="bi bi-file-image"></i>' : '<i class="bi bi-file-earmark"></i>'}</div>
+                        <div>
+                            <div class="doc-name">${escapeHtml(doc.file_name)}</div>
+                            <div class="doc-date">${new Date(doc.uploaded_at).toLocaleString()}</div>
+                        </div>
+                    </div>
+                    <div class="doc-actions">
+                        <button class="doc-btn doc-view" onclick="viewDocument('${doc.file_url}')"><i class="bi bi-eye"></i></button>
+                        <button class="doc-btn doc-delete" onclick="deleteDocument('${caseId}', ${doc.id})"><i class="bi bi-trash"></i></button>
+                    </div>
+                </div>
+            `).join('');
+            } catch (error) {
+                console.error('Error loading documents:', error);
+            }
+        }
+
+        function viewDocument(fileUrl) { window.open(fileUrl, '_blank'); }
+
+        async function deleteDocument(caseId, docId) {
+            if (!confirm('Are you sure you want to delete this document?')) return;
+            try {
+                const response = await fetch(`/api/cases/${caseId}/documents/${docId}`, { method: 'DELETE', headers: getHeaders() });
+                if (response.ok) {
+                    showToast('Document deleted successfully!');
+                    loadDocuments(caseId);
+                } else {
+                    showToast('Failed to delete document', 'error');
+                }
+            } catch (error) {
+                showToast('Error deleting document', 'error');
+            }
+        }
+
+        async function uploadDocument() {
+            const fileInput = document.getElementById('fileInput');
+            const file = fileInput?.files[0];
+            if (!file) return;
+
+            showToast(`📤 Uploading ${file.name}...`, 'info');
+
+            const formData = new FormData();
+            formData.append('file', file);
+
+            try {
+                const response = await fetch(`/api/cases/${currentCaseData.case_id}/upload`, {
+                    method: 'POST',
+                    headers: { 'Authorization': `Bearer ${authToken}` },
+                    body: formData
+                });
+
+                if (response.ok) {
+                    showToast(`✅ ${file.name} uploaded successfully!`);
+                    fileInput.value = '';
+                    loadDocuments(currentCaseData.case_id);
+                } else {
+                    showToast('Upload failed', 'error');
+                }
+            } catch (error) {
+                showToast('Error uploading file', 'error');
+            }
+        }
+
+        async function loadAndShowCase(caseId, editMode) {
+            try {
+                const response = await fetch(`/api/cases/${caseId}`, { headers: getHeaders() });
+                if (!response.ok) throw new Error('Case not found');
+                currentCaseData = await response.json();
+
+                document.getElementById('modalTitle').textContent = editMode ? `✏️ Editing: ${currentCaseData.case_id}` : `📋 Case Details: ${currentCaseData.case_id}`;
+                document.getElementById('editModeBtn').style.display = editMode ? 'none' : 'block';
+                document.getElementById('saveEditBtn').style.display = editMode ? 'flex' : 'none';
+                document.getElementById('cancelEditBtn').style.display = editMode ? 'flex' : 'none';
+
+                renderModalContent(editMode);
+                await loadDocuments(caseId);
+                document.getElementById('caseModal').classList.add('active');
+            } catch (error) {
+                showToast('Error loading case details', 'error');
+            }
+        }
+
+        function renderModalContent(editMode) {
+            const modalBody = document.getElementById('modalBody');
+            const c = currentCaseData;
+
+            if (editMode) {
+                modalBody.innerHTML = `
+                <div class="detail-section"><h4><i class="bi bi-info-circle"></i> Basic Information</h4>
+                    <div class="detail-row"><div class="detail-label">Case ID:</div><div class="detail-value"><strong>${c.case_id}</strong></div></div>
+                    <div class="detail-row"><div class="detail-label">Patient Name:</div><div class="detail-value"><input type="text" id="edit_name" class="edit-input" value="${escapeHtml(c.name)}"></div></div>
+                    <div class="detail-row"><div class="detail-label">Phone Number:</div><div class="detail-value"><input type="tel" id="edit_phone" class="edit-input" value="${c.phone_number}"></div></div>
+                    <div class="detail-row"><div class="detail-label">Category:</div><div class="detail-value"><select id="edit_category" class="edit-select"><option value="normal" ${c.category === 'normal' ? 'selected' : ''}>Normal</option><option value="pre_existing" ${c.category === 'pre_existing' ? 'selected' : ''}>Pre-existing</option></select></div></div>
+                    <div class="detail-row"><div class="detail-label">Status:</div><div class="detail-value"><select id="edit_status" class="edit-select"><option value="pending" ${c.status === 'pending' ? 'selected' : ''}>Pending</option><option value="scheduled" ${c.status === 'scheduled' ? 'selected' : ''}>Scheduled</option><option value="completed" ${c.status === 'completed' ? 'selected' : ''}>Completed</option><option value="non_workable" ${c.status === 'non_workable' ? 'selected' : ''}>Non-Workable</option></select></div></div>
+                    <div class="detail-row"><div class="detail-label">Claim ID:</div><div class="detail-value"><input type="text" id="edit_claim_id" class="edit-input" value="${c.claim_id || ''}"></div></div>
+                    <div class="detail-row"><div class="detail-label">Insurance Company:</div><div class="detail-value"><input type="text" id="edit_company" class="edit-input" value="${c.company_name || ''}"></div></div>
+                </div>
+                <div class="detail-section"><h4><i class="bi bi-pencil-square"></i> Notes</h4><textarea id="edit_notes" class="form-control" rows="4">${c.notes || ''}</textarea></div>
+                <div class="detail-section">
+                    <h4><i class="bi bi-paperclip"></i> Documents</h4>
+                    <div class="upload-area" onclick="document.getElementById('fileInput').click()">
+                        <i class="bi bi-cloud-upload"></i><p>Click to upload document</p>
+                        <input type="file" id="fileInput" style="display: none" onchange="uploadDocument()">
+                    </div>
+                    <div id="documentsList" style="margin-top: 20px;">Loading...</div>
+                </div>
+                <div class="detail-section"><h4><i class="bi bi-question-circle"></i> Questionnaire</h4><div id="questionnaireContent"></div></div>
+                <div class="detail-section"><h4><i class="bi bi-mic"></i> Transcript</h4><textarea id="edit_transcript" class="form-control" rows="6">${c.transcript || ''}</textarea></div>
+            `;
+                loadQuestionnaireInModal(c.category, true);
+            } else {
+                modalBody.innerHTML = `
+                <div class="detail-section"><h4><i class="bi bi-info-circle"></i> Basic Information</h4>
+                    <div class="detail-row"><div class="detail-label">Case ID:</div><div class="detail-value"><strong>${c.case_id}</strong></div></div>
+                    <div class="detail-row"><div class="detail-label">Patient Name:</div><div class="detail-value">${escapeHtml(c.name)}</div></div>
+                    <div class="detail-row"><div class="detail-label">Phone Number:</div><div class="detail-value">${c.phone_number}</div></div>
+                    <div class="detail-row"><div class="detail-label">Category:</div><div class="detail-value">${c.category === 'normal' ? 'Normal Health Claim' : 'Pre-existing Disease'}</div></div>
+                    <div class="detail-row"><div class="detail-label">Status:</div><div class="detail-value"><span class="status-badge status-${c.status}">${c.status}</span></div></div>
+                    <div class="detail-row"><div class="detail-label">Claim ID:</div><div class="detail-value">${c.claim_id || 'N/A'}</div></div>
+                    <div class="detail-row"><div class="detail-label">Insurance Company:</div><div class="detail-value">${c.company_name || 'N/A'}</div></div>
+                    <div class="detail-row"><div class="detail-label">Created At:</div><div class="detail-value">${new Date(c.created_at).toLocaleString()}</div></div>
+                    ${c.meeting_link ? `<div class="detail-row"><div class="detail-label">Meeting Link:</div><div class="detail-value"><a href="${c.meeting_link}" target="_blank">${c.meeting_link}</a></div></div>` : ''}
+                    ${c.scheduled_time ? `<div class="detail-row"><div class="detail-label">Scheduled Time:</div><div class="detail-value">${new Date(c.scheduled_time).toLocaleString()}</div></div>` : ''}
+                    ${c.drive_link ? `<div class="detail-row"><div class="detail-label">Drive Folder:</div><div class="detail-value"><a href="${c.drive_link}" target="_blank" style="color: var(--blue);">📂 Open in Google Drive</a></div></div>` : ''}
+                    </div>
+                <div class="detail-section"><h4><i class="bi bi-pencil-square"></i> Notes</h4><div style="background: var(--surface-2); padding: 16px; border-radius: 10px;">${c.notes || 'No notes added yet.'}</div></div>
+                <div class="detail-section"><h4><i class="bi bi-paperclip"></i> Documents</h4><div id="documentsList">Loading...</div></div>
+                <div class="detail-section"><h4><i class="bi bi-question-circle"></i> Questionnaire</h4><div id="questionnaireContent"></div></div>
+                <div class="detail-section"><h4><i class="bi bi-mic"></i> Transcript</h4><div style="background: var(--surface-2); padding: 16px; border-radius: 10px;">${c.transcript || 'No transcript available yet.'}</div></div>
+            `;
+                loadQuestionnaireInModal(c.category, false);
+            }
+        }
+
+        function loadQuestionnaireInModal(category, isEditMode) {
+            const container = document.getElementById('questionnaireContent');
+            if (!container) return;
+
+            const genericQuestions = ["What is your full name and age?", "What is your contact number?", "What is the insurance policy number?", "When did the symptoms first appear?", "What are your current symptoms?", "Have you visited any doctor/hospital?", "What diagnosis was given?", "What treatment has been prescribed?", "Have you had any diagnostic tests?", "What is the estimated treatment cost?"];
+
+            let specificQuestions = category === 'normal'
+                ? ["Was this a sudden onset or gradual?", "Had you ever experienced this before?", "Was there any triggering event?"]
+                : ["What pre-existing condition do you have?", "When were you first diagnosed?", "What medications do you regularly take?", "Have you had any previous hospitalizations?", "Who is your regular treating doctor?", "Was this current episode related to pre-existing condition?"];
+
+            if (isEditMode) {
+                container.innerHTML = `<h5>Generic Questions</h5>${genericQuestions.map((q, i) => `<div class="question-item"><div class="question-text">${i + 1}. ${q}</div><textarea class="form-control" rows="2" id="gen_q_${i}"></textarea></div>`).join('')}
+                <h5>Specific Questions</h5>${specificQuestions.map((q, i) => `<div class="question-item"><div class="question-text">${q}</div><textarea class="form-control" rows="2" id="spec_q_${i}"></textarea></div>`).join('')}
+                <button class="btn-primary" onclick="saveAnswers()">Save Answers</button>`;
+            } else {
+                container.innerHTML = `<p style="color: var(--ink-muted); text-align: center; padding: 20px;">Click "Edit" to add questionnaire answers</p>`;
+            }
+        }
+
+        function toggleEditMode() {
+            isEditMode = true;
+            document.getElementById('modalTitle').textContent = `✏️ Editing: ${currentCaseData.case_id}`;
+            document.getElementById('editModeBtn').style.display = 'none';
+            document.getElementById('saveEditBtn').style.display = 'flex';
+            document.getElementById('cancelEditBtn').style.display = 'flex';
+            renderModalContent(true);
+        }
+
+        function cancelEdit() {
+            isEditMode = false;
+            document.getElementById('modalTitle').textContent = `📋 Case Details: ${currentCaseData.case_id}`;
+            document.getElementById('editModeBtn').style.display = 'block';
+            document.getElementById('saveEditBtn').style.display = 'none';
+            document.getElementById('cancelEditBtn').style.display = 'none';
+            renderModalContent(false);
+        }
+// ============ USER CONTEXT FUNCTIONS ============
+
+// Load user context (role and name)
+// Load user context (role and name)
+function loadUserContext() {
+    const userStr = localStorage.getItem('user');
+    if (userStr) {
+        try {
+            const user = JSON.parse(userStr);
+            
+            // Show admin dashboard button if admin
+            if (user.role === 'administrator') {
+                adminViewAll = true;   // ← add this line
+
+                document.getElementById('adminDashboardContainer').style.display = 'block';
+                
+                // Add admin toggle to the header
+                const headerRight = document.querySelector('.header-right');
+                const adminToggle = document.createElement('div');
+                adminToggle.style.cssText = 'display: flex; align-items: center; gap: 8px; margin-left: 10px;';
+                adminToggle.innerHTML = `
+                    <button id="adminToggleBtn" style="padding: 4px 12px; border-radius: 8px; border: 1px solid var(--border); background: white; cursor: pointer; font-size: 0.7rem; font-weight: 500; font-family: 'DM Sans', sans-serif;">
+                        👁️ View All
+                    </button>
+                    <span id="viewStatus" style="font-size: 0.65rem; color: var(--ink-muted);"></span>
+                `;
+                headerRight.appendChild(adminToggle);
+                
+                // Setup toggle functionality
+                document.getElementById('adminToggleBtn').addEventListener('click', function() {
+                    adminViewAll = !adminViewAll;
+                    this.textContent = adminViewAll ? '🔒 View Mine' : '👁️ View All';
+                    this.style.background = adminViewAll ? '#dbeafe' : 'white';
+                    this.style.borderColor = adminViewAll ? '#3b82f6' : 'var(--border)';
+                    
+                    const statusSpan = document.getElementById('viewStatus');
+                    statusSpan.textContent = adminViewAll ? '(Showing ALL cases)' : '(Showing your cases)';
+                    statusSpan.style.color = adminViewAll ? '#1d4ed8' : 'var(--ink-muted)';
+                    
+                    loadCases();
+                    showToast(adminViewAll ? 'Showing ALL users data' : 'Showing only your data', 'info');
+                });
+                
+                console.log('👑 Admin mode enabled - can view all data');
+            } else {
+                console.log(`👤 Investigator: ${user.username} - viewing own data only`);
+            }
+        } catch(e) {
+            console.error('Error loading user context:', e);
+        }
+    }
+}
+
+// Admin view toggle
+let adminViewAll = false;
+        async function saveCaseEdits() {
+            const updatedData = {
+                name: document.getElementById('edit_name')?.value,
+                phone_number: document.getElementById('edit_phone')?.value,
+                category: document.getElementById('edit_category')?.value,
+                status: document.getElementById('edit_status')?.value,
+                claim_id: document.getElementById('edit_claim_id')?.value || null,
+                company_name: document.getElementById('edit_company')?.value || null,
+                notes: document.getElementById('edit_notes')?.value || null,
+                transcript: document.getElementById('edit_transcript')?.value || null
+            };
+
+            try {
+                const response = await fetch(`/api/cases/${currentCaseData.case_id}`, { method: 'PUT', headers: getHeaders(), body: JSON.stringify(updatedData) });
+                if (response.ok) {
+                    showToast('✅ Case updated successfully!');
+                    await loadAndShowCase(currentCaseData.case_id, false);
+                    loadCases();
+                } else {
+                    const error = await response.json();
+                    showToast(error.detail || 'Failed to update case', 'error');
+                }
+            } catch (error) {
+                showToast('Error updating case', 'error');
+            }
+        }
+
+        function saveAnswers() { showToast('Answers saved successfully!', 'success'); }
+
+        function closeModal() {
+            document.getElementById('caseModal').classList.remove('active');
+            isEditMode = false;
+        }
+
+        document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeModal(); });
+        document.getElementById('caseModal')?.addEventListener('click', (e) => { if (e.target === this) closeModal(); });
+
+        function escapeHtml(text) { if (!text) return ''; const div = document.createElement('div'); div.textContent = text; return div.innerHTML; }
+
+        loadUserContext();
+        loadCases();
+        initSearchFilters();
+        setInterval(loadCases, 30000);
+    </script>
+</body>
+
+</html>
