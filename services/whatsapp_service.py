@@ -1,6 +1,6 @@
 """
-WhatsApp Service - Complete Working Version
-Handles sending messages, templates, media, and webhook verification
+WhatsApp Service - Complete with Template Support
+Handles sending messages, templates, media download, and webhook verification
 """
 
 import os
@@ -14,7 +14,7 @@ import logging
 logger = logging.getLogger(__name__)
 
 class WhatsAppService:
-    """Complete WhatsApp Service with all functionality"""
+    """WhatsApp Service with template support"""
     
     def __init__(self):
         self.api_url = settings.WHATSAPP_API_URL
@@ -22,13 +22,6 @@ class WhatsAppService:
         self.phone_number_id = settings.WHATSAPP_PHONE_NUMBER_ID
         self.verify_token = settings.WHATSAPP_VERIFY_TOKEN
         self.base_url = f"{self.api_url}/{self.phone_number_id}/messages"
-        
-        # Template names
-        self.TEMPLATE_CONFIRMATION = "desktop_verification_with_button_v3"
-        self.TEMPLATE_REMINDER = "insurance_claim_call_reminder_with_link"
-        self.TEMPLATE_COMPLETION = "claim_verification_completed_v2"
-        self.TEMPLATE_MEETING_MISSED = "missed_claim_verification_call"
-        self.TEMPLATE_CALL_MISSED = "claim_contact_update_v2"
     
     # ============ WEBHOOK VERIFICATION ============
     def verify_webhook(self, hub_mode: str, hub_verify_token: str, hub_challenge: str) -> Optional[str]:
@@ -75,7 +68,6 @@ class WhatsAppService:
         """Send a WhatsApp template message"""
         to_number = to_number.lstrip("+")
         
-        # Build components
         components = []
         
         if body_params:
@@ -125,7 +117,7 @@ class WhatsAppService:
             logger.error(f"❌ Template error: {e}")
             return False, ""
     
-    # ============ SEND CONFIRMATION (After Slot Assignment) ============
+    # ============ TEMPLATE: BOOKING CONFIRMATION ============
     def send_booking_confirmation(
         self,
         to_number: str,
@@ -133,11 +125,107 @@ class WhatsAppService:
         name: str,
         meeting_date: datetime,
         meeting_link: str,
+        drive_link: str = None,
         claim_id: str = None
-    ) -> bool:
-        """Send booking confirmation with meeting link"""
+    ) -> Tuple[bool, str]:
+        """Send booking confirmation using template"""
         
-        # Convert to IST
+        from datetime import timezone, timedelta
+        IST = timezone(timedelta(hours=5, minutes=30))
+        
+        if meeting_date.tzinfo is None:
+            meeting_date = meeting_date.replace(tzinfo=timezone.utc)
+        
+        indian_time = meeting_date.astimezone(IST)
+        formatted_time = indian_time.strftime('%I:%M %p').lstrip('0')
+        formatted_date = indian_time.strftime('%A, %B %d, %Y')
+        
+        display_id = claim_id if claim_id else case_id
+        drive_link_text = drive_link if drive_link else "Not available yet"
+        
+        body_params = [
+            {"type": "text", "text": display_id},      # {{1}}
+            {"type": "text", "text": name},            # {{2}}
+            {"type": "text", "text": formatted_date},  # {{3}}
+            {"type": "text", "text": formatted_time},  # {{4}}
+            {"type": "text", "text": meeting_link},    # {{5}}
+            {"type": "text", "text": drive_link_text}  # {{6}}
+        ]
+        
+        return self.send_template_message(to_number, "booking_confirmation", body_params)
+    
+    # ============ TEMPLATE: MEETING REMINDER ============
+    def send_meeting_reminder(
+        self,
+        to_number: str,
+        name: str,
+        case_id: str,
+        meeting_time: datetime,
+        meeting_link: str
+    ) -> Tuple[bool, str]:
+        """Send meeting reminder using template"""
+        
+        from datetime import timezone, timedelta
+        IST = timezone(timedelta(hours=5, minutes=30))
+        
+        if meeting_time.tzinfo is None:
+            meeting_time = meeting_time.replace(tzinfo=timezone.utc)
+        
+        indian_time = meeting_time.astimezone(IST)
+        formatted_time = indian_time.strftime('%I:%M %p').lstrip('0')
+        formatted_date = indian_time.strftime('%A, %B %d, %Y')
+        
+        body_params = [
+            {"type": "text", "text": name},            # {{1}}
+            {"type": "text", "text": case_id},         # {{2}}
+            {"type": "text", "text": formatted_date},  # {{3}}
+            {"type": "text", "text": formatted_time},  # {{4}}
+            {"type": "text", "text": meeting_link}     # {{5}}
+        ]
+        
+        return self.send_template_message(to_number, "meeting_reminder", body_params)
+    
+    # ============ TEMPLATE: VERIFICATION COMPLETE ============
+    def send_verification_complete(
+        self,
+        to_number: str,
+        name: str,
+        case_id: str,
+        claim_id: str = None
+    ) -> Tuple[bool, str]:
+        """Send verification complete using template"""
+        
+        display_id = claim_id if claim_id else case_id
+        
+        body_params = [
+            {"type": "text", "text": name},       # {{1}}
+            {"type": "text", "text": display_id}  # {{2}}
+        ]
+        
+        return self.send_template_message(to_number, "verification_complete", body_params)
+    
+    # ============ SEND CONFIRMATION (Plain Text Fallback) ============
+    def send_confirmation(
+        self,
+        to_number: str,
+        case_id: str,
+        name: str,
+        meeting_date: datetime,
+        meeting_link: str,
+        drive_link: str = None,
+        claim_id: str = None
+    ) -> Tuple[bool, str]:
+        """Send booking confirmation - tries template first, falls back to plain text"""
+        
+        # Try template first
+        success, msg_id = self.send_booking_confirmation(
+            to_number, case_id, name, meeting_date, meeting_link, drive_link, claim_id
+        )
+        
+        if success:
+            return True, msg_id
+        
+        # Fallback to plain text
         from datetime import timezone, timedelta
         IST = timezone(timedelta(hours=5, minutes=30))
         
@@ -150,58 +238,49 @@ class WhatsAppService:
         
         display_id = claim_id if claim_id else case_id
         
-        # Extract meeting ID from URL
-        meeting_path = meeting_link.replace("https://", "").replace("http://", "")
-        if meeting_path.startswith("meet.google.com/"):
-            meeting_path = meeting_path.replace("meet.google.com/", "")
-        if "?" in meeting_path:
-            meeting_path = meeting_path.split("?")[0]
-        if meeting_path.endswith("/"):
-            meeting_path = meeting_path[:-1]
+        message = f"""✅ Your consultation is confirmed!
+
+📋 Case: {display_id}
+👤 Patient: {name}
+📅 Date: {formatted_date}
+🕒 Time: {formatted_time}
+
+🔗 Join Meeting: {meeting_link}"""
         
-        # Template parameters
-        body_params = [
-            {"type": "text", "text": name},           # {{1}}
-            {"type": "text", "text": display_id},     # {{2}}
-            {"type": "text", "text": formatted_date}, # {{3}}
-            {"type": "text", "text": formatted_time}, # {{4}}
-            {"type": "text", "text": meeting_path},   # {{5}}
-        ]
+        if drive_link:
+            message += f"""
+
+📁 Documents Folder: {drive_link}
+   (Upload medical reports, prescriptions here)"""
         
-        button_params = [
-            {"type": "text", "text": meeting_path}    # URL parameter
-        ]
+        message += """
+
+Please join 5 minutes early.
+
+- FARE AutoSpect Team"""
         
-        success, _ = self.send_template_message(
-            to_number,
-            self.TEMPLATE_CONFIRMATION,
-            body_params=body_params,
-            button_params=button_params
+        return self.send_message(to_number, message)
+    
+    # ============ SEND REMINDER (Plain Text Fallback) ============
+    def send_reminder(
+        self,
+        to_number: str,
+        name: str,
+        case_id: str,
+        meeting_time: datetime,
+        meeting_link: str
+    ) -> Tuple[bool, str]:
+        """Send meeting reminder - tries template first, falls back to plain text"""
+        
+        # Try template first
+        success, msg_id = self.send_meeting_reminder(
+            to_number, name, case_id, meeting_time, meeting_link
         )
         
         if success:
-            logger.info(f"✅ Confirmation sent to {to_number} for case {case_id}")
-        else:
-            # Fallback to plain text
-            message = f"""✅ Your consultation is confirmed!
-
-📋 Case: {case_id}
-👤 {name}
-📅 {formatted_date}
-🕒 {formatted_time}
-
-🔗 Join Meeting: {meeting_link}
-
-Please join 5 minutes early."""
-            success, _ = self.send_message(to_number, message)
+            return True, msg_id
         
-        return success
-    
-    # ============ SEND REMINDER ============
-    def send_reminder(self, to_number: str, name: str, case_id: str, 
-                     meeting_time: datetime, meeting_link: str) -> bool:
-        """Send meeting reminder"""
-        
+        # Fallback to plain text
         from datetime import timezone, timedelta
         IST = timezone(timedelta(hours=5, minutes=30))
         
@@ -212,54 +291,43 @@ Please join 5 minutes early."""
         formatted_time = indian_time.strftime('%I:%M %p').lstrip('0')
         formatted_date = indian_time.strftime('%A, %B %d, %Y')
         
-        # Try template first
-        body_params = [
-            {"type": "text", "text": name},
-            {"type": "text", "text": case_id},
-            {"type": "text", "text": formatted_date},
-            {"type": "text", "text": formatted_time},
-            {"type": "text", "text": meeting_link}
-        ]
-        
-        success, _ = self.send_template_message(
-            to_number,
-            self.TEMPLATE_REMINDER,
-            body_params=body_params
-        )
-        
-        if not success:
-            # Fallback
-            message = f"""🔔 REMINDER: Your consultation is today!
+        message = f"""🔔 REMINDER: Your consultation is today!
 
-📅 {formatted_date}
-🕒 {formatted_time}
+📋 Case: {case_id}
+👤 Patient: {name}
+📅 Date: {formatted_date}
+🕒 Time: {formatted_time}
 
 🔗 Join: {meeting_link}
 
-Please join 5 minutes early."""
-            success, _ = self.send_message(to_number, message)
+Please join 5 minutes early.
+
+- FARE AutoSpect Team"""
         
-        return success
+        return self.send_message(to_number, message)
     
-    # ============ SEND COMPLETION ============
-    def send_completion(self, to_number: str, name: str, case_id: str, claim_id: str = None) -> bool:
-        """Send completion message"""
+    # ============ SEND COMPLETION (Plain Text Fallback) ============
+    def send_completion(
+        self,
+        to_number: str,
+        name: str,
+        case_id: str,
+        claim_id: str = None
+    ) -> Tuple[bool, str]:
+        """Send completion message - tries template first, falls back to plain text"""
         
-        display_id = claim_id if claim_id else case_id
-        
-        body_params = [
-            {"type": "text", "text": name},
-            {"type": "text", "text": display_id}
-        ]
-        
-        success, _ = self.send_template_message(
-            to_number,
-            self.TEMPLATE_COMPLETION,
-            body_params=body_params
+        # Try template first
+        success, msg_id = self.send_verification_complete(
+            to_number, name, case_id, claim_id
         )
         
-        if not success:
-            message = f"""✅ Verification Complete!
+        if success:
+            return True, msg_id
+        
+        # Fallback to plain text
+        display_id = claim_id if claim_id else case_id
+        
+        message = f"""✅ Verification Complete!
 
 Dear {name},
 
@@ -267,133 +335,20 @@ Your health claim verification for case {display_id} has been completed.
 
 The report has been generated and will be shared with the insurance company.
 
-Thank you for your cooperation."""
-            success, _ = self.send_message(to_number, message)
+Thank you for your cooperation.
+
+- FARE AutoSpect Team"""
         
-        return success
+        return self.send_message(to_number, message)
     
-    # ============ SEND MEETING MISSED ============
-    def send_meeting_missed(self, to_number: str, name: str, case_id: str, claim_id: str = None) -> bool:
-        """Send meeting missed notification"""
-        
-        display_id = claim_id if claim_id else case_id
-        
-        body_params = [
-            {"type": "text", "text": name},
-            {"type": "text", "text": display_id}
-        ]
-        
-        success, _ = self.send_template_message(
-            to_number,
-            self.TEMPLATE_MEETING_MISSED,
-            body_params=body_params
-        )
-        
-        if not success:
-            message = f"""⚠️ You missed your verification meeting for case {display_id}.
-
-Our team will contact you to reschedule.
-
-Please respond to this message."""
-            success, _ = self.send_message(to_number, message)
-        
-        return success
-    
-    # ============ SEND CALL MISSED ============
-    def send_call_missed(self, to_number: str, name: str, case_id: str, claim_id: str = None) -> bool:
-        """Send call missed notification"""
-        
-        display_id = claim_id if claim_id else case_id
-        
-        body_params = [
-            {"type": "text", "text": name},
-            {"type": "text", "text": display_id}
-        ]
-        
-        success, _ = self.send_template_message(
-            to_number,
-            self.TEMPLATE_CALL_MISSED,
-            body_params=body_params
-        )
-        
-        if not success:
-            message = f"""📞 We tried to contact you for claim {display_id}.
-
-Please call us back or reply to this message.
-
-Regards,
-FARE AutoSpect Team"""
-            success, _ = self.send_message(to_number, message)
-        
-        return success
-    
-    # ============ SEND AVAILABILITY CHECK (With Buttons) ============
-    def send_availability_check(self, to_number: str, name: str, 
-                               slot_date: date, slot_time: time, case_id: str) -> bool:
-        """Send interactive availability check with buttons"""
-        
-        to_number = to_number.lstrip("+")
-        
-        headers = {
-            "Authorization": f"Bearer {self.access_token}",
-            "Content-Type": "application/json",
-        }
-        
-        # Format time
-        slot_datetime = datetime.combine(slot_date, slot_time)
-        formatted_time = slot_datetime.strftime('%I:%M %p').lstrip('0')
-        formatted_date = slot_datetime.strftime('%A, %B %d, %Y')
-        
-        payload = {
-            "messaging_product": "whatsapp",
-            "to": to_number,
-            "type": "interactive",
-            "interactive": {
-                "type": "button",
-                "body": {
-                    "text": (
-                        f"Hello {name}!\n\n"
-                        f"Your consultation has been scheduled for:\n"
-                        f"📅 {formatted_date}\n"
-                        f"🕒 {formatted_time}\n"
-                        f"Duration: 15 minutes\n\n"
-                        f"Are you available at this time?"
-                    )
-                },
-                "action": {
-                    "buttons": [
-                        {
-                            "type": "reply",
-                            "reply": {
-                                "id": f"AVAILABLE_{case_id}",
-                                "title": "Yes, Available"
-                            }
-                        },
-                        {
-                            "type": "reply",
-                            "reply": {
-                                "id": f"UNAVAILABLE_{case_id}",
-                                "title": "Not Available"
-                            }
-                        }
-                    ]
-                }
-            }
-        }
-        
-        try:
-            response = requests.post(self.base_url, headers=headers, json=payload, timeout=10)
-            
-            if response.status_code == 200:
-                logger.info(f"✅ Availability check sent to {to_number}")
-                return True
-            
-            logger.error(f"❌ Availability check failed: {response.text}")
-            return False
-            
-        except Exception as e:
-            logger.error(f"❌ Availability check error: {e}")
-            return False
+    # ============ SEND CUSTOM MESSAGE ============
+    def send_custom_message(
+        self,
+        to_number: str,
+        message: str
+    ) -> Tuple[bool, str]:
+        """Send a custom message"""
+        return self.send_message(to_number, message)
     
     # ============ DOWNLOAD MEDIA ============
     def download_media(self, media_id: str) -> Tuple[Optional[bytes], Optional[str], Optional[str]]:

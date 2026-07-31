@@ -131,10 +131,7 @@ class WhatsAppMessage(Base):
     __tablename__ = "health_whatsapp_messages"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
-    
-    # ✅ FIXED: Added ForeignKey
     case_id = Column(String(50), ForeignKey("health_di_cases.case_id"), nullable=True, index=True)
-    
     message_id = Column(String(100), unique=True, nullable=True)
     from_number = Column(String(20), nullable=False)
     to_number = Column(String(20), nullable=False)
@@ -142,7 +139,8 @@ class WhatsAppMessage(Base):
     message_type = Column(String(50), default="text")
     status = Column(String(50), default="sent")
     sent_at = Column(DateTime, server_default=func.now(), index=True)
-
+    is_read = Column(Boolean, default=False)  # ← Already exists
+    is_incoming = Column(Boolean, default=True)  # ← ADD THIS
     __table_args__ = (
         Index("idx_health_whatsapp_from", "from_number"),
         Index("idx_health_whatsapp_sent_at", "sent_at"),

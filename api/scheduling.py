@@ -221,7 +221,13 @@ async def book_meeting(
         # ============================================================
         # ✅ SEND WHATSAPP CONFIRMATION
         # ============================================================
+       # ============================================================
+        # ✅ SEND WHATSAPP CONFIRMATION
+        # ============================================================
         try:
+            from services.whatsapp_service import get_whatsapp_service
+            from app.models import WhatsAppMessage
+            
             whatsapp = get_whatsapp_service()
             confirm_success = whatsapp.send_booking_confirmation(
                 to_number=case.phone_number,
@@ -229,8 +235,32 @@ async def book_meeting(
                 name=case.name,
                 meeting_date=start_time,
                 meeting_link=meet_link,
+                drive_link=case.drive_link,  # ← ADD THIS
                 claim_id=case.claim_id
             )
+            
+            if confirm_success:
+                print(f"✅ WhatsApp confirmation sent for {case.case_id}")
+                
+                # Save to database
+                confirm_msg = WhatsAppMessage(
+                    case_id=case.case_id,
+                    from_number="System",
+                    to_number=case.phone_number,
+                    message_body=f"📋 Booking confirmation sent",
+                    message_type="confirmation",
+                    status="sent",
+                    sent_at=datetime.now(),
+                    is_read=True,
+                    is_incoming=False
+                )
+                db.add(confirm_msg)
+                await db.commit()
+            else:
+                print(f"⚠️ Failed to send WhatsApp confirmation for {case.case_id}")
+        except Exception as whatsapp_error:
+            print(f"⚠️ WhatsApp error: {whatsapp_error}")
+            # Don't fail the booking if WhatsApp fails
             
             if confirm_success:
                 print(f"✅ WhatsApp confirmation sent for {case.case_id}")

@@ -2,7 +2,7 @@
 Webhook handlers for WhatsApp and external services
 """
 
-from fastapi import APIRouter, Request, HTTPException, BackgroundTasks
+from fastapi import APIRouter, Request, HTTPException, BackgroundTasks, Depends, status
 from fastapi.responses import PlainTextResponse, JSONResponse
 from typing import Optional
 import json
@@ -12,6 +12,16 @@ from datetime import datetime
 from app.config import settings
 from services.whatsapp_service import get_whatsapp_service
 from api.logs import push_log
+from pydantic import BaseModel
+from typing import Optional, List
+from datetime import datetime
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select, update, desc
+from app.database import get_db
+from app.models import DICase, WhatsAppMessage, User
+from app.auth_utils import get_current_user
+
+
 
 router = APIRouter(prefix="/webhook", tags=["Webhooks"])
 logger = logging.getLogger(__name__)
@@ -19,6 +29,43 @@ logger = logging.getLogger(__name__)
 # Store processed messages to prevent duplicates
 processed_messages = set()
 MAX_PROCESSED = 1000
+
+# ================================================================
+# PYDANTIC MODELS FOR WHATSAPP
+# ================================================================
+
+class SendMessageRequest(BaseModel):
+    case_id: str
+    message: str
+
+class SendReminderRequest(BaseModel):
+    case_id: str
+
+class SendCompletionRequest(BaseModel):
+    case_id: str
+
+class SendCustomMessageRequest(BaseModel):
+    case_id: Optional[str] = None
+    phone_number: Optional[str] = None
+    message: str
+
+class MarkMessageReadRequest(BaseModel):
+    message_id: str
+
+class WhatsAppMessageResponse(BaseModel):
+    id: int
+    case_id: Optional[str]
+    from_number: str
+    to_number: str
+    message_body: str
+    message_type: str
+    status: str
+    sent_at: datetime
+    is_read: bool = False
+    is_incoming: bool = True
+
+    class Config:
+        from_attributes = True
 
 # ============ WHATSAPP WEBHOOK VERIFICATION ============
 @router.get("/whatsapp")
@@ -186,7 +233,7 @@ async def handle_text_message(from_number: str, message_text: str, message_id: s
         break
 
 
-# ============ HANDLE YES RESPONSE ============
+# ============ HANDLE YES RESPONSE (FIXED) ============
 async def handle_yes_response(case_id: str, from_number: str):
     """Handle when customer confirms availability"""
     
@@ -260,13 +307,15 @@ async def handle_yes_response(case_id: str, from_number: str):
         
         await db.commit()
         
-        # Send confirmation
-        success = whatsapp.send_booking_confirmation(
+        # ✅ FIXED: Use send_confirmation (not send_booking_confirmation)
+        success = whatsapp.send_confirmation(
             to_number=from_number,
             case_id=case.case_id,
             name=case.name,
             meeting_date=slot_datetime,
-            meeting_link=meet_link
+            meeting_link=meet_link,
+            drive_link=case.drive_link,
+            claim_id=case.claim_id
         )
         
         if success:
@@ -449,117 +498,580 @@ async def handle_location_message(from_number: str, latitude: float, longitude: 
         break
 
 
-# ============ API ENDPOINTS FOR SENDING MESSAGES ============
+# ================================================================
+# WHATSAPP MESSAGE API ENDPOINTS
+# ================================================================
 
-class SendMessageRequest(BaseModel):
-    case_id: str
-    message: str
-
-class SendReminderRequest(BaseModel):
-    case_id: str
-
-class SendCompletionRequest(BaseModel):
-    case_id: str
-
-@router.post("/send-whatsapp")
-async def send_custom_whatsapp(request: SendMessageRequest):
-    """Send a custom WhatsApp message"""
+@router.get("/messages")
+async def get_messages(
+    case_id: Optional[str] = None,
+    limit: int = 100,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Get WhatsApp messages for a case or all messages.
+    """
+    query = select(WhatsAppMessage)
     
-    from sqlalchemy.ext.asyncio import AsyncSession
-    from sqlalchemy import select
-    from app.database import get_db
-    from app.models import DICase
+    if case_id:
+        # Verify case belongs to user or user is admin
+        case_query = select(DICase).where(DICase.case_id == case_id)
+        if current_user.role != "administrator":
+            case_query = case_query.where(DICase.user_id == current_user.id)
+        
+        case_result = await db.execute(case_query)
+        case = case_result.scalar_one_or_none()
+        
+        if not case:
+            raise HTTPException(404, "Case not found or no permission")
+        
+        query = query.where(WhatsAppMessage.case_id == case_id)
+    
+    query = query.order_by(desc(WhatsAppMessage.sent_at)).limit(limit)
+    
+    result = await db.execute(query)
+    messages = result.scalars().all()
+    
+    return {
+        "success": True,
+        "messages": messages,
+        "count": len(messages)
+    }
+
+
+@router.post("/messages/send")
+async def send_custom_message(
+    request: SendCustomMessageRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Send a custom WhatsApp message to a case or phone number.
+    """
     from services.whatsapp_service import get_whatsapp_service
     
-    whatsapp = get_whatsapp_service()
+    phone = None
+    case = None
+    case_id = None
     
-    async for db in get_db():
-        result = await db.execute(
-            select(DICase).where(DICase.case_id == request.case_id)
-        )
+    # Get phone number
+    if request.case_id:
+        # Verify case belongs to user
+        query = select(DICase).where(DICase.case_id == request.case_id)
+        if current_user.role != "administrator":
+            query = query.where(DICase.user_id == current_user.id)
+        
+        result = await db.execute(query)
         case = result.scalar_one_or_none()
         
         if not case:
-            raise HTTPException(404, "Case not found")
+            raise HTTPException(404, "Case not found or no permission")
         
-        success, msg_id = whatsapp.send_message(
-            to_number=case.phone_number,
-            message=request.message
-        )
-        
-        if success:
-            return {"success": True, "message_id": msg_id}
-        else:
-            raise HTTPException(500, "Failed to send message")
-
-
-@router.post("/send-reminder")
-async def send_reminder_whatsapp(request: SendReminderRequest):
-    """Send reminder for a case"""
-    
-    from sqlalchemy.ext.asyncio import AsyncSession
-    from sqlalchemy import select
-    from app.database import get_db
-    from app.models import DICase
-    from services.whatsapp_service import get_whatsapp_service
-    
-    whatsapp = get_whatsapp_service()
-    
-    async for db in get_db():
+        phone = case.phone_number
+        case_id = case.case_id
+    elif request.phone_number:
+        phone = request.phone_number
+        # Try to find case by phone
         result = await db.execute(
-            select(DICase).where(DICase.case_id == request.case_id)
+            select(DICase).where(DICase.phone_number == phone)
         )
         case = result.scalar_one_or_none()
-        
-        if not case:
-            raise HTTPException(404, "Case not found")
-        
-        if not case.scheduled_time or not case.meeting_link:
-            raise HTTPException(400, "No meeting scheduled")
-        
-        success = whatsapp.send_reminder(
-            to_number=case.phone_number,
-            name=case.name,
-            case_id=case.case_id,
-            meeting_time=case.scheduled_time,
-            meeting_link=case.meeting_link
-        )
-        
-        if success:
-            return {"success": True}
-        else:
-            raise HTTPException(500, "Failed to send reminder")
-
-
-@router.post("/send-completion")
-async def send_completion_whatsapp(request: SendCompletionRequest):
-    """Send completion message for a case"""
+        if case:
+            case_id = case.case_id
+    else:
+        raise HTTPException(400, "Either case_id or phone_number is required")
     
-    from sqlalchemy.ext.asyncio import AsyncSession
-    from sqlalchemy import select
-    from app.database import get_db
-    from app.models import DICase
+    if not phone:
+        raise HTTPException(400, "No phone number found")
+    
+    # Send message
+    whatsapp = get_whatsapp_service()
+    success, msg_id = whatsapp.send_message(phone, request.message)
+    
+    if not success:
+        raise HTTPException(500, "Failed to send WhatsApp message")
+    
+    # Save to database
+    new_message = WhatsAppMessage(
+        case_id=case_id,
+        from_number="System",
+        to_number=phone,
+        message_body=f"📤 To {phone}: {request.message}",
+        message_type="text",
+        status="sent",
+        sent_at=datetime.now(),
+        is_read=True,
+        is_incoming=False
+    )
+    
+    db.add(new_message)
+    await db.commit()
+    await db.refresh(new_message)
+    
+    # Log
+    await push_log({
+        "type": "whatsapp_sent",
+        "message": f"Message sent to {phone} for case {case_id or 'unknown'}"
+    })
+    
+    return {
+        "success": True,
+        "message_id": msg_id,
+        "phone": phone,
+        "case_id": case_id
+    }
+
+
+@router.post("/messages/reminder")
+async def send_reminder_message(
+    request: SendReminderRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Send a meeting reminder to a case.
+    """
     from services.whatsapp_service import get_whatsapp_service
+    from datetime import datetime
+    
+    # Verify case belongs to user
+    query = select(DICase).where(DICase.case_id == request.case_id)
+    if current_user.role != "administrator":
+        query = query.where(DICase.user_id == current_user.id)
+    
+    result = await db.execute(query)
+    case = result.scalar_one_or_none()
+    
+    if not case:
+        raise HTTPException(404, "Case not found or no permission")
+    
+    if not case.scheduled_time or not case.meeting_link:
+        raise HTTPException(400, "No meeting scheduled for this case")
+    
+    # Format reminder
+    scheduled_time = case.scheduled_time
+    formatted_time = scheduled_time.strftime('%I:%M %p').lstrip('0')
+    formatted_date = scheduled_time.strftime('%A, %B %d, %Y')
+    
+    message = f"""🔔 REMINDER: Your consultation is today!
+
+📅 {formatted_date}
+🕒 {formatted_time}
+
+🔗 Join: {case.meeting_link}
+
+Please join 5 minutes early."""
+    
+    # Send
+    whatsapp = get_whatsapp_service()
+    success, msg_id = whatsapp.send_message(case.phone_number, message)
+    
+    if not success:
+        raise HTTPException(500, "Failed to send reminder")
+    
+    # Save to database
+    new_message = WhatsAppMessage(
+        case_id=case.case_id,
+        from_number="System",
+        to_number=case.phone_number,
+        message_body=f"🔔 Reminder sent to {case.phone_number}",
+        message_type="reminder",
+        status="sent",
+        sent_at=datetime.now(),
+        is_read=True,
+        is_incoming=False
+    )
+    
+    db.add(new_message)
+    await db.commit()
+    
+    await push_log({
+        "type": "whatsapp_reminder",
+        "message": f"Reminder sent for case {case.case_id}"
+    })
+    
+    return {
+        "success": True,
+        "message_id": msg_id,
+        "case_id": case.case_id
+    }
+
+
+@router.post("/messages/completion")
+async def send_completion_message(
+    request: SendCompletionRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Send a completion message to a case.
+    """
+    from services.whatsapp_service import get_whatsapp_service
+    from datetime import datetime
+    
+    # Verify case belongs to user
+    query = select(DICase).where(DICase.case_id == request.case_id)
+    if current_user.role != "administrator":
+        query = query.where(DICase.user_id == current_user.id)
+    
+    result = await db.execute(query)
+    case = result.scalar_one_or_none()
+    
+    if not case:
+        raise HTTPException(404, "Case not found or no permission")
+    
+    display_id = case.claim_id if case.claim_id else case.case_id
+    
+    message = f"""✅ Verification Complete!
+
+Dear {case.name},
+
+Your health claim verification for case {display_id} has been completed.
+
+The report has been generated and will be shared with the insurance company.
+
+Thank you for your cooperation."""
+    
+    # Send
+    whatsapp = get_whatsapp_service()
+    success, msg_id = whatsapp.send_message(case.phone_number, message)
+    
+    if not success:
+        raise HTTPException(500, "Failed to send completion message")
+    
+    # Save to database
+    new_message = WhatsAppMessage(
+        case_id=case.case_id,
+        from_number="System",
+        to_number=case.phone_number,
+        message_body=f"✅ Completion sent to {case.phone_number}",
+        message_type="completion",
+        status="sent",
+        sent_at=datetime.now(),
+        is_read=True,
+        is_incoming=False
+    )
+    
+    db.add(new_message)
+    await db.commit()
+    
+    # Update case status
+    if case.status != "completed":
+        await db.execute(
+            update(DICase)
+            .where(DICase.case_id == case.case_id)
+            .values(status="completed", updated_at=datetime.now())
+        )
+        await db.commit()
+    
+    await push_log({
+        "type": "whatsapp_completion",
+        "message": f"Completion sent for case {case.case_id}"
+    })
+    
+    return {
+        "success": True,
+        "message_id": msg_id,
+        "case_id": case.case_id
+    }
+
+
+@router.post("/messages/mark-read")
+async def mark_message_read(
+    request: MarkMessageReadRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Mark a WhatsApp message as read.
+    """
+    result = await db.execute(
+        select(WhatsAppMessage).where(WhatsAppMessage.id == int(request.message_id))
+    )
+    message = result.scalar_one_or_none()
+    
+    if not message:
+        raise HTTPException(404, "Message not found")
+    
+    # Verify user has permission
+    if message.case_id:
+        case_result = await db.execute(
+            select(DICase).where(DICase.case_id == message.case_id)
+        )
+        case = case_result.scalar_one_or_none()
+        if case and case.user_id != current_user.id and current_user.role != "administrator":
+            raise HTTPException(403, "No permission")
+    
+    message.is_read = True
+    await db.commit()
+    
+    return {"success": True}
+
+
+@router.post("/messages/mark-all-read")
+async def mark_all_messages_read(
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Mark all messages for a user's cases as read.
+    """
+    # Get all cases for this user
+    query = select(DICase).where(DICase.user_id == current_user.id)
+    if current_user.role == "administrator":
+        query = select(DICase)
+    
+    result = await db.execute(query)
+    cases = result.scalars().all()
+    
+    case_ids = [c.case_id for c in cases]
+    
+    if case_ids:
+        await db.execute(
+            update(WhatsAppMessage)
+            .where(WhatsAppMessage.case_id.in_(case_ids))
+            .where(WhatsAppMessage.is_read == False)
+            .values(is_read=True)
+        )
+        await db.commit()
+    
+    return {"success": True}
+
+# ================================================================
+# WHATSAPP TEMPLATE ENDPOINTS
+# ================================================================
+
+@router.post("/templates/confirmation")
+async def send_confirmation_template(
+    request: SendReminderRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Send booking confirmation template to a case.
+    """
+    from services.whatsapp_service import get_whatsapp_service
+    from datetime import datetime
+    
+    # Verify case belongs to user
+    query = select(DICase).where(DICase.case_id == request.case_id)
+    if current_user.role != "administrator":
+        query = query.where(DICase.user_id == current_user.id)
+    
+    result = await db.execute(query)
+    case = result.scalar_one_or_none()
+    
+    if not case:
+        raise HTTPException(404, "Case not found or no permission")
+    
+    if not case.scheduled_time or not case.meeting_link:
+        raise HTTPException(400, "No meeting scheduled for this case")
     
     whatsapp = get_whatsapp_service()
+    success, msg_id = whatsapp.send_booking_confirmation(
+        to_number=case.phone_number,
+        case_id=case.case_id,
+        name=case.name,
+        meeting_date=case.scheduled_time,
+        meeting_link=case.meeting_link,
+        drive_link=case.drive_link,
+        claim_id=case.claim_id
+    )
     
-    async for db in get_db():
-        result = await db.execute(
-            select(DICase).where(DICase.case_id == request.case_id)
+    if not success:
+        raise HTTPException(500, "Failed to send confirmation template")
+    
+    # Save to database
+    new_message = WhatsAppMessage(
+        case_id=case.case_id,
+        from_number="System",
+        to_number=case.phone_number,
+        message_body=f"📋 Booking confirmation sent (Template)",
+        message_type="confirmation",
+        status="sent",
+        sent_at=datetime.now(),
+        is_read=True,
+        is_incoming=False
+    )
+    db.add(new_message)
+    await db.commit()
+    
+    await push_log({
+        "type": "whatsapp_template",
+        "message": f"Confirmation template sent for case {case.case_id}"
+    })
+    
+    return {
+        "success": True,
+        "message_id": msg_id,
+        "case_id": case.case_id
+    }
+
+
+@router.post("/templates/reminder")
+async def send_reminder_template(
+    request: SendReminderRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Send meeting reminder template to a case.
+    """
+    from services.whatsapp_service import get_whatsapp_service
+    from datetime import datetime
+    
+    # Verify case belongs to user
+    query = select(DICase).where(DICase.case_id == request.case_id)
+    if current_user.role != "administrator":
+        query = query.where(DICase.user_id == current_user.id)
+    
+    result = await db.execute(query)
+    case = result.scalar_one_or_none()
+    
+    if not case:
+        raise HTTPException(404, "Case not found or no permission")
+    
+    if not case.scheduled_time or not case.meeting_link:
+        raise HTTPException(400, "No meeting scheduled for this case")
+    
+    whatsapp = get_whatsapp_service()
+    success, msg_id = whatsapp.send_meeting_reminder(
+        to_number=case.phone_number,
+        name=case.name,
+        case_id=case.case_id,
+        meeting_time=case.scheduled_time,
+        meeting_link=case.meeting_link
+    )
+    
+    if not success:
+        raise HTTPException(500, "Failed to send reminder template")
+    
+    # Save to database
+    new_message = WhatsAppMessage(
+        case_id=case.case_id,
+        from_number="System",
+        to_number=case.phone_number,
+        message_body=f"🔔 Reminder sent (Template)",
+        message_type="reminder",
+        status="sent",
+        sent_at=datetime.now(),
+        is_read=True,
+        is_incoming=False
+    )
+    db.add(new_message)
+    await db.commit()
+    
+    await push_log({
+        "type": "whatsapp_template",
+        "message": f"Reminder template sent for case {case.case_id}"
+    })
+    
+    return {
+        "success": True,
+        "message_id": msg_id,
+        "case_id": case.case_id
+    }
+
+
+@router.post("/templates/completion")
+async def send_completion_template(
+    request: SendCompletionRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Send verification complete template to a case.
+    """
+    from services.whatsapp_service import get_whatsapp_service
+    from datetime import datetime
+    
+    # Verify case belongs to user
+    query = select(DICase).where(DICase.case_id == request.case_id)
+    if current_user.role != "administrator":
+        query = query.where(DICase.user_id == current_user.id)
+    
+    result = await db.execute(query)
+    case = result.scalar_one_or_none()
+    
+    if not case:
+        raise HTTPException(404, "Case not found or no permission")
+    
+    whatsapp = get_whatsapp_service()
+    success, msg_id = whatsapp.send_verification_complete(
+        to_number=case.phone_number,
+        name=case.name,
+        case_id=case.case_id,
+        claim_id=case.claim_id
+    )
+    
+    if not success:
+        raise HTTPException(500, "Failed to send completion template")
+    
+    # Save to database
+    new_message = WhatsAppMessage(
+        case_id=case.case_id,
+        from_number="System",
+        to_number=case.phone_number,
+        message_body=f"✅ Completion sent (Template)",
+        message_type="completion",
+        status="sent",
+        sent_at=datetime.now(),
+        is_read=True,
+        is_incoming=False
+    )
+    db.add(new_message)
+    await db.commit()
+    
+    # Update case status
+    if case.status != "completed":
+        await db.execute(
+            update(DICase)
+            .where(DICase.case_id == case.case_id)
+            .values(status="completed", updated_at=datetime.now())
         )
-        case = result.scalar_one_or_none()
-        
-        if not case:
-            raise HTTPException(404, "Case not found")
-        
-        success = whatsapp.send_completion(
-            to_number=case.phone_number,
-            name=case.name,
-            case_id=case.case_id,
-            claim_id=case.claim_id
-        )
-        
-        if success:
-            return {"success": True}
-        else:
-            raise HTTPException(500, "Failed to send completion")
+        await db.commit()
+    
+    await push_log({
+        "type": "whatsapp_template",
+        "message": f"Completion template sent for case {case.case_id}"
+    })
+    
+    return {
+        "success": True,
+        "message_id": msg_id,
+        "case_id": case.case_id
+    }
+@router.get("/messages/unread-count")
+async def get_unread_count(
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Get count of unread messages for user's cases.
+    """
+    # Get all cases for this user
+    query = select(DICase).where(DICase.user_id == current_user.id)
+    if current_user.role == "administrator":
+        query = select(DICase)
+    
+    result = await db.execute(query)
+    cases = result.scalars().all()
+    
+    case_ids = [c.case_id for c in cases]
+    
+    if not case_ids:
+        return {"success": True, "unread_count": 0}
+    
+    result = await db.execute(
+        select(WhatsAppMessage)
+        .where(WhatsAppMessage.case_id.in_(case_ids))
+        .where(WhatsAppMessage.is_read == False)
+        .where(WhatsAppMessage.is_incoming == True)
+    )
+    unread = result.scalars().all()
+    
+    return {
+        "success": True,
+        "unread_count": len(unread)
+    }
