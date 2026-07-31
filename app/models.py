@@ -139,6 +139,7 @@ class WhatsAppMessage(Base):
     message_type = Column(String(50), default="text")
     status = Column(String(50), default="sent")
     sent_at = Column(DateTime, server_default=func.now(), index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=True)
     is_read = Column(Boolean, default=False)  # ← Already exists
     is_incoming = Column(Boolean, default=True)  # ← ADD THIS
     __table_args__ = (
@@ -161,7 +162,7 @@ class Questionnaire(Base):
     category = Column(String(50), default="generic")
     answered_at = Column(DateTime, nullable=True)
     created_at = Column(DateTime, server_default=func.now())
-
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=True)
     __table_args__ = (
         Index("idx_health_questionnaire_case_category", "case_id", "category"),
     )
