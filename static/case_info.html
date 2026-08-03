@@ -1086,39 +1086,44 @@
 
     // ===== LOAD CASE DETAILS =====
     async function loadCaseDetails() {
-        try {
-            const response = await fetch(`/api/cases/${caseId}`, { headers: getHeaders() });
-            if (!response.ok) throw new Error('Case not found');
-            currentCaseData = await response.json();
-            
-            document.getElementById('basicInfo').innerHTML = `
-                <div class="info-item"><div class="info-label">Case ID</div><div class="info-value"><strong>${currentCaseData.case_id}</strong></div></div>
-                <div class="info-item"><div class="info-label">Patient Name</div><div class="info-value">${escapeHtml(currentCaseData.name)}</div></div>
-                <div class="info-item"><div class="info-label">Phone Number</div><div class="info-value">${currentCaseData.phone_number}</div></div>
-                <div class="info-item"><div class="info-label">Category</div><div class="info-value">${currentCaseData.category === 'normal' ? 'Normal Health Claim' : 'Pre-existing Disease'}</div></div>
-                <div class="info-item"><div class="info-label">Status</div><div class="info-value">${getStatusBadge(currentCaseData.status)}</div></div>
-                <div class="info-item"><div class="info-label">Claim ID</div><div class="info-value">${currentCaseData.claim_id || 'N/A'}</div></div>
-                <div class="info-item"><div class="info-label">Insurance Company</div><div class="info-value">${currentCaseData.company_name || 'N/A'}</div></div>
-                <div class="info-item"><div class="info-label">Created At</div><div class="info-value">${new Date(currentCaseData.created_at).toLocaleString()}</div></div>
-                <div class="info-item"><div class="info-label">Last Updated</div><div class="info-value">${currentCaseData.updated_at ? new Date(currentCaseData.updated_at).toLocaleString() : 'N/A'}</div></div>
-                ${currentCaseData.meeting_link ? `<div class="info-item"><div class="info-label">Meeting Link</div><div class="info-value"><a href="${currentCaseData.meeting_link}" target="_blank">Join Meeting →</a></div></div>` : ''}
-                ${currentCaseData.scheduled_time ? `<div class="info-item"><div class="info-label">Scheduled Time</div><div class="info-value">${new Date(currentCaseData.scheduled_time).toLocaleString()}</div></div>` : ''}
-                ${currentCaseData.drive_link ? `<div class="info-item"><div class="info-label">Drive Folder</div><div class="info-value"><a href="${currentCaseData.drive_link}" target="_blank">Open Folder →</a></div></div>` : ''}
-            `;
-            
-            document.getElementById('notesContent').innerHTML = currentCaseData.notes || 'No notes added yet.';
-            document.getElementById('transcriptContent').innerHTML = currentCaseData.transcript || 'No transcript available yet. Will appear after the meeting.';
-            
-            await loadDocuments();
-            
-            document.getElementById('loadingState').style.display = 'none';
-            document.getElementById('caseContent').style.display = 'block';
-            
-        } catch (error) {
-            showToast('Error loading case details', 'error');
-            document.getElementById('loadingState').innerHTML = '<p style="color: red;">Error loading case. Please go back and try again.</p>';
+    try {
+        const response = await fetch(`/api/cases/${caseId}`, { headers: getHeaders() });
+        if (!response.ok) throw new Error('Case not found');
+        currentCaseData = await response.json();
+        
+        document.getElementById('basicInfo').innerHTML = `
+            <div class="info-item"><div class="info-label">Case ID</div><div class="info-value"><strong>${currentCaseData.case_id}</strong></div></div>
+            <div class="info-item"><div class="info-label">Patient Name</div><div class="info-value">${escapeHtml(currentCaseData.name)}</div></div>
+            <div class="info-item"><div class="info-label">Phone Number</div><div class="info-value">${currentCaseData.phone_number}</div></div>
+            <div class="info-item"><div class="info-label">Category</div><div class="info-value">${currentCaseData.category === 'normal' ? 'Normal Health Claim' : 'Pre-existing Disease'}</div></div>
+            <div class="info-item"><div class="info-label">Status</div><div class="info-value">${getStatusBadge(currentCaseData.status)}</div></div>
+            <div class="info-item"><div class="info-label">Claim ID</div><div class="info-value">${currentCaseData.claim_id || 'N/A'}</div></div>
+            <div class="info-item"><div class="info-label">Insurance Company</div><div class="info-value">${currentCaseData.company_name || 'N/A'}</div></div>
+            <div class="info-item"><div class="info-label">Created At</div><div class="info-value">${new Date(currentCaseData.created_at).toLocaleString()}</div></div>
+            <div class="info-item"><div class="info-label">Last Updated</div><div class="info-value">${currentCaseData.updated_at ? new Date(currentCaseData.updated_at).toLocaleString() : 'N/A'}</div></div>
+            ${currentCaseData.meeting_link ? `<div class="info-item"><div class="info-label">Meeting Link</div><div class="info-value"><a href="${currentCaseData.meeting_link}" target="_blank">Join Meeting →</a></div></div>` : ''}
+            ${currentCaseData.scheduled_time ? `<div class="info-item"><div class="info-label">Scheduled Time</div><div class="info-value">${new Date(currentCaseData.scheduled_time).toLocaleString()}</div></div>` : ''}
+            ${currentCaseData.drive_link ? `<div class="info-item"><div class="info-label">Drive Folder</div><div class="info-value"><a href="${currentCaseData.drive_link}" target="_blank">Open Folder →</a></div></div>` : ''}
+        `;
+        
+        // ✅ FIX: Use the correct ID
+        const notesDisplay = document.getElementById('notesDisplay');
+        if (notesDisplay) {
+            notesDisplay.textContent = currentCaseData.notes || 'No notes added yet.';
         }
+        
+        document.getElementById('transcriptContent').innerHTML = currentCaseData.transcript || 'No transcript available yet. Will appear after the meeting.';
+        
+        await loadDocuments();
+        
+        document.getElementById('loadingState').style.display = 'none';
+        document.getElementById('caseContent').style.display = 'block';
+        
+    } catch (error) {
+        showToast('Error loading case details', 'error');
+        document.getElementById('loadingState').innerHTML = '<p style="color: red;">Error loading case. Please go back and try again.</p>';
     }
+}
     
     // ===== LOAD DOCUMENTS WITH VISUAL PREVIEW =====
     async function loadDocuments() {
