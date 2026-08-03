@@ -73,7 +73,52 @@ class CaseResponse(BaseModel):
     
     class Config:
         from_attributes = True
+# ============ UPDATE CASE NOTES ============
+class NotesUpdate(BaseModel):
+    notes: str
 
+@router.patch("/{case_id}/notes")
+async def update_case_notes(
+    case_id: str,
+    notes_data: NotesUpdate,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """Update only the notes field of a case"""
+    
+    # Verify case exists and user has permission
+    query = select(DICase).where(DICase.case_id == case_id)
+    if current_user.role != "administrator":
+        query = query.where(DICase.user_id == current_user.id)
+    
+    result = await db.execute(query)
+    case = result.scalar_one_or_none()
+    
+    if not case:
+        raise HTTPException(404, f"Case {case_id} not found or you don't have permission")
+    
+    # Update only notes
+    await db.execute(
+        update(DICase)
+        .where(DICase.case_id == case_id)
+        .values(
+            notes=notes_data.notes,
+            updated_at=datetime.now()
+        )
+    )
+    await db.commit()
+    
+    await push_log({
+        "type": "notes_updated",
+        "message": f"Notes updated for case {case_id}",
+        "data": {"case_id": case_id}
+    })
+    
+    return {
+        "message": "Notes updated successfully",
+        "case_id": case_id,
+        "notes": notes_data.notes
+    }
 def generate_case_id() -> str:
     date_str = datetime.now().strftime("%d%m%y")
     random_suffix = str(uuid.uuid4())[:4].upper()
