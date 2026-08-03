@@ -141,19 +141,19 @@ class WhatsAppService:
         formatted_date = indian_time.strftime('%A, %B %d, %Y')
         
         display_id = claim_id if claim_id else case_id
-        drive_link_text = drive_link if drive_link else "Not available yet"
         
+        # ✅ MATCHES YOUR APPROVED TEMPLATE: booking_confirmation
+        # Variables: {{1}}=name, {{2}}=claim_id, {{3}}=date, {{4}}=time, {{5}}=meet_link
         body_params = [
-            {"type": "text", "text": display_id},      # {{1}}
-            {"type": "text", "text": name},            # {{2}}
+            {"type": "text", "text": name},            # {{1}}
+            {"type": "text", "text": display_id},      # {{2}}
             {"type": "text", "text": formatted_date},  # {{3}}
             {"type": "text", "text": formatted_time},  # {{4}}
-            {"type": "text", "text": meeting_link},    # {{5}}
-            {"type": "text", "text": drive_link_text}  # {{6}}
+            {"type": "text", "text": meeting_link}     # {{5}}
         ]
         
         return self.send_template_message(to_number, "booking_confirmation", body_params)
-    
+
     # ============ TEMPLATE: MEETING REMINDER ============
     def send_meeting_reminder(
         self,
@@ -175,6 +175,8 @@ class WhatsAppService:
         formatted_time = indian_time.strftime('%I:%M %p').lstrip('0')
         formatted_date = indian_time.strftime('%A, %B %d, %Y')
         
+        # ✅ MATCHES YOUR APPROVED TEMPLATE: meeting_reminder
+        # Variables: {{1}}=name, {{2}}=case_id, {{3}}=date, {{4}}=time, {{5}}=meet_link
         body_params = [
             {"type": "text", "text": name},            # {{1}}
             {"type": "text", "text": case_id},         # {{2}}
@@ -184,7 +186,7 @@ class WhatsAppService:
         ]
         
         return self.send_template_message(to_number, "meeting_reminder", body_params)
-    
+
     # ============ TEMPLATE: VERIFICATION COMPLETE ============
     def send_verification_complete(
         self,
@@ -197,13 +199,14 @@ class WhatsAppService:
         
         display_id = claim_id if claim_id else case_id
         
+        # ✅ MATCHES YOUR APPROVED TEMPLATE: verification_complete
+        # Variables: {{1}}=name, {{2}}=claim_id
         body_params = [
             {"type": "text", "text": name},       # {{1}}
             {"type": "text", "text": display_id}  # {{2}}
         ]
         
         return self.send_template_message(to_number, "verification_complete", body_params)
-    
     # ============ SEND CONFIRMATION (Plain Text Fallback) ============
     def send_confirmation(
         self,
@@ -238,26 +241,30 @@ class WhatsAppService:
         
         display_id = claim_id if claim_id else case_id
         
-        message = f"""✅ Your consultation is confirmed!
+        # ✅ MATCHES YOUR TEMPLATE FORMAT
+        message = f"""Dear {name},
 
-📋 Case: {display_id}
-👤 Patient: {name}
-📅 Date: {formatted_date}
-🕒 Time: {formatted_time}
+    Your desktop verification call has been scheduled on behalf of the insurance company.
 
-🔗 Join Meeting: {meeting_link}"""
-        
-        if drive_link:
-            message += f"""
+    Claim No: {display_id}
+    Date: {formatted_date}
+    Time: {formatted_time}
 
-📁 Documents Folder: {drive_link}
-   (Upload medical reports, prescriptions here)"""
-        
-        message += """
+    Meeting Link: {meeting_link}
 
-Please join 5 minutes early.
+    Please keep the following documents ready:
+    - Driving License of actual rider/driver at time of incident
+    - ID Proof
+    - RC Copy
+    - Medical papers/injury photographs if any
+    - Accident spot photographs
+    - FIR/MCR/GD if available
 
-- FARE AutoSpect Team"""
+    Kindly join 5 minutes before the scheduled time.
+
+    Regards,
+    Desktop Verification Team
+    ICS Assure Services Pvt Ltd."""
         
         return self.send_message(to_number, message)
     
@@ -291,21 +298,32 @@ Please join 5 minutes early.
         formatted_time = indian_time.strftime('%I:%M %p').lstrip('0')
         formatted_date = indian_time.strftime('%A, %B %d, %Y')
         
-        message = f"""🔔 REMINDER: Your consultation is today!
+        # ✅ MATCHES YOUR TEMPLATE FORMAT
+        message = f"""Dear {name},
 
-📋 Case: {case_id}
-👤 Patient: {name}
-📅 Date: {formatted_date}
-🕒 Time: {formatted_time}
+    This is a reminder for your scheduled insurance claim verification call.
 
-🔗 Join: {meeting_link}
+    Claim ID: {case_id}
+    Date: {formatted_date}
+    Time: {formatted_time}
 
-Please join 5 minutes early.
+    Please keep the following documents ready:
 
-- FARE AutoSpect Team"""
+    - Driving License
+    - ID Proof
+    - RC Book
+    - Medical Documents
+    - FIR (if available)
+
+    Please join the call 5 minutes before the scheduled time.
+
+    Meeting Link: {meeting_link}
+
+    Regards, 
+    ICS Assure Services Pvt Ltd."""
         
         return self.send_message(to_number, message)
-    
+
     # ============ SEND COMPLETION (Plain Text Fallback) ============
     def send_completion(
         self,
@@ -327,17 +345,17 @@ Please join 5 minutes early.
         # Fallback to plain text
         display_id = claim_id if claim_id else case_id
         
-        message = f"""✅ Verification Complete!
+        # ✅ MATCHES YOUR TEMPLATE FORMAT
+        message = f"""Dear {name},
 
-Dear {name},
+    Verification for claim ID {display_id} has been completed successfully.
 
-Your health claim verification for case {display_id} has been completed.
+    Your claim details have been recorded for processing.
 
-The report has been generated and will be shared with the insurance company.
+    If additional documents are required, further communication may be shared regarding the claim process.
 
-Thank you for your cooperation.
-
-- FARE AutoSpect Team"""
+    Regards,
+    ICS Assure Services Pvt Ltd."""
         
         return self.send_message(to_number, message)
     

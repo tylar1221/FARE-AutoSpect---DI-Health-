@@ -235,7 +235,7 @@ async def book_meeting(
                 name=case.name,
                 meeting_date=start_time,
                 meeting_link=meet_link,
-                drive_link=case.drive_link,  # ← ADD THIS
+                drive_link=None,  # ← ADD THIS
                 claim_id=case.claim_id
             )
             
@@ -262,13 +262,6 @@ async def book_meeting(
             print(f"⚠️ WhatsApp error: {whatsapp_error}")
             # Don't fail the booking if WhatsApp fails
             
-            if confirm_success:
-                print(f"✅ WhatsApp confirmation sent for {case.case_id}")
-            else:
-                print(f"⚠️ Failed to send WhatsApp confirmation for {case.case_id}")
-        except Exception as whatsapp_error:
-            print(f"⚠️ WhatsApp error: {whatsapp_error}")
-            # Don't fail the booking if WhatsApp fails
         
         return {
             "message": "Meeting scheduled successfully",

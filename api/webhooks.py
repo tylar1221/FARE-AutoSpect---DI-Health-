@@ -233,7 +233,8 @@ async def handle_text_message(from_number: str, message_text: str, message_id: s
         break
 
 
-# ============ HANDLE YES RESPONSE (FIXED) ============
+# api/webhooks.py
+
 async def handle_yes_response(case_id: str, from_number: str):
     """Handle when customer confirms availability"""
     
@@ -307,15 +308,15 @@ async def handle_yes_response(case_id: str, from_number: str):
         
         await db.commit()
         
-        # ✅ FIXED: Use send_confirmation (not send_booking_confirmation)
-        success = whatsapp.send_confirmation(
+        # ✅ SEND CONFIRMATION (UPDATED)
+        success = whatsapp.send_booking_confirmation(
             to_number=from_number,
             case_id=case.case_id,
             name=case.name,
             meeting_date=slot_datetime,
             meeting_link=meet_link,
-            drive_link=case.drive_link,
-            claim_id=case.claim_id
+            drive_link=None,  # ✅ NOT USED
+            claim_id=case.claim_id  # ✅ This becomes {{2}}
         )
         
         if success:
@@ -848,9 +849,7 @@ async def send_confirmation_template(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    """
-    Send booking confirmation template to a case.
-    """
+    """Send booking confirmation template to a case."""
     from services.whatsapp_service import get_whatsapp_service
     from datetime import datetime
     
@@ -869,13 +868,14 @@ async def send_confirmation_template(
         raise HTTPException(400, "No meeting scheduled for this case")
     
     whatsapp = get_whatsapp_service()
+    # ✅ UPDATED: No drive_link parameter
     success, msg_id = whatsapp.send_booking_confirmation(
         to_number=case.phone_number,
         case_id=case.case_id,
         name=case.name,
         meeting_date=case.scheduled_time,
         meeting_link=case.meeting_link,
-        drive_link=case.drive_link,
+        drive_link=None,  # ✅ NOT USED
         claim_id=case.claim_id
     )
     
@@ -907,7 +907,6 @@ async def send_confirmation_template(
         "message_id": msg_id,
         "case_id": case.case_id
     }
-
 
 @router.post("/templates/reminder")
 async def send_reminder_template(
