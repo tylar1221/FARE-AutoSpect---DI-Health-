@@ -869,7 +869,7 @@ async def send_confirmation_template(
     
     whatsapp = get_whatsapp_service()
     # ✅ UPDATED: No drive_link parameter
-    success, msg_id = whatsapp.send_booking_confirmation(
+    success, msg_id ,formatted_message  = whatsapp.send_booking_confirmation(
         to_number=case.phone_number,
         case_id=case.case_id,
         name=case.name,
@@ -887,7 +887,7 @@ async def send_confirmation_template(
         case_id=case.case_id,
         from_number="System",
         to_number=case.phone_number,
-        message_body=f"📋 Booking confirmation sent (Template)",
+        message_body=formatted_message,
         message_type="confirmation",
         status="sent",
         sent_at=datetime.now(),
@@ -935,7 +935,7 @@ async def send_reminder_template(
         raise HTTPException(400, "No meeting scheduled for this case")
     
     whatsapp = get_whatsapp_service()
-    success, msg_id = whatsapp.send_meeting_reminder(
+    success, msg_id , formatted_message = whatsapp.send_meeting_reminder(
         to_number=case.phone_number,
         name=case.name,
         case_id=case.case_id,
@@ -951,7 +951,7 @@ async def send_reminder_template(
         case_id=case.case_id,
         from_number="System",
         to_number=case.phone_number,
-        message_body=f"🔔 Reminder sent (Template)",
+        message_body=formatted_message,
         message_type="reminder",
         status="sent",
         sent_at=datetime.now(),
@@ -997,7 +997,7 @@ async def send_completion_template(
         raise HTTPException(404, "Case not found or no permission")
     
     whatsapp = get_whatsapp_service()
-    success, msg_id = whatsapp.send_verification_complete(
+    success, msg_id , formatted_message = whatsapp.send_verification_complete(
         to_number=case.phone_number,
         name=case.name,
         case_id=case.case_id,
@@ -1012,7 +1012,7 @@ async def send_completion_template(
         case_id=case.case_id,
         from_number="System",
         to_number=case.phone_number,
-        message_body=f"✅ Completion sent (Template)",
+        message_body=formatted_message,
         message_type="completion",
         status="sent",
         sent_at=datetime.now(),

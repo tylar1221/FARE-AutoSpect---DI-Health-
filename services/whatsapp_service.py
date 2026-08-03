@@ -127,7 +127,7 @@ class WhatsAppService:
         meeting_link: str,
         drive_link: str = None,
         claim_id: str = None
-    ) -> Tuple[bool, str]:
+    ) -> Tuple[bool, str, Optional[str]]:
         """Send booking confirmation using template"""
         
         from datetime import timezone, timedelta
@@ -144,15 +144,46 @@ class WhatsAppService:
         
         # ✅ MATCHES YOUR APPROVED TEMPLATE: booking_confirmation
         # Variables: {{1}}=name, {{2}}=claim_id, {{3}}=date, {{4}}=time, {{5}}=meet_link
+        # Generate the full template message
+        template_message = f"""Dear {name},
+
+        Your desktop verification call has been scheduled on behalf of the insurance company.
+
+        Claim No: {display_id}
+        Date: {formatted_date}
+        Time: {formatted_time}
+
+        Meeting Link: {meeting_link}
+
+        Please keep the following documents ready:
+        - Driving License of actual rider/driver at time of incident
+        - ID Proof
+        - RC Copy
+        - Medical papers/injury photographs if any
+        - Accident spot photographs
+        - FIR/MCR/GD if available
+
+        Kindly join 5 minutes before the scheduled time.
+
+        Regards,
+        Desktop Verification Team
+        ICS Assure Services Pvt Ltd."""
+
         body_params = [
-            {"type": "text", "text": name},            # {{1}}
-            {"type": "text", "text": display_id},      # {{2}}
-            {"type": "text", "text": formatted_date},  # {{3}}
-            {"type": "text", "text": formatted_time},  # {{4}}
-            {"type": "text", "text": meeting_link}     # {{5}}
+            {"type": "text", "text": name},
+            {"type": "text", "text": display_id},
+            {"type": "text", "text": formatted_date},
+            {"type": "text", "text": formatted_time},
+            {"type": "text", "text": meeting_link}
         ]
-        
-        return self.send_template_message(to_number, "booking_confirmation", body_params)
+
+        success, msg_id = self.send_template_message(to_number, "booking_confirmation", body_params)
+
+        if success:
+            return True, msg_id, template_message
+
+        success, msg_id = self.send_message(to_number, template_message)
+        return success, msg_id, template_message
 
     # ============ TEMPLATE: MEETING REMINDER ============
     def send_meeting_reminder(
@@ -162,7 +193,7 @@ class WhatsAppService:
         case_id: str,
         meeting_time: datetime,
         meeting_link: str
-    ) -> Tuple[bool, str]:
+    ) -> Tuple[bool, str, Optional[str]]:
         """Send meeting reminder using template"""
         
         from datetime import timezone, timedelta
@@ -177,15 +208,45 @@ class WhatsAppService:
         
         # ✅ MATCHES YOUR APPROVED TEMPLATE: meeting_reminder
         # Variables: {{1}}=name, {{2}}=case_id, {{3}}=date, {{4}}=time, {{5}}=meet_link
+        # Generate the full template message
+        template_message = f"""Dear {name},
+
+        This is a reminder for your scheduled insurance claim verification call.
+
+        Claim ID: {case_id}
+        Date: {formatted_date}
+        Time: {formatted_time}
+
+        Please keep the following documents ready:
+
+        - Driving License
+        - ID Proof
+        - RC Book
+        - Medical Documents
+        - FIR (if available)
+
+        Please join the call 5 minutes before the scheduled time.
+
+        Meeting Link: {meeting_link}
+
+        Regards, 
+        ICS Assure Services Pvt Ltd."""
+
         body_params = [
-            {"type": "text", "text": name},            # {{1}}
-            {"type": "text", "text": case_id},         # {{2}}
-            {"type": "text", "text": formatted_date},  # {{3}}
-            {"type": "text", "text": formatted_time},  # {{4}}
-            {"type": "text", "text": meeting_link}     # {{5}}
+            {"type": "text", "text": name},
+            {"type": "text", "text": case_id},
+            {"type": "text", "text": formatted_date},
+            {"type": "text", "text": formatted_time},
+            {"type": "text", "text": meeting_link}
         ]
-        
-        return self.send_template_message(to_number, "meeting_reminder", body_params)
+
+        success, msg_id = self.send_template_message(to_number, "meeting_reminder", body_params)
+
+        if success:
+            return True, msg_id, template_message
+
+        success, msg_id = self.send_message(to_number, template_message)
+        return success, msg_id, template_message
 
     # ============ TEMPLATE: VERIFICATION COMPLETE ============
     def send_verification_complete(
@@ -194,19 +255,37 @@ class WhatsAppService:
         name: str,
         case_id: str,
         claim_id: str = None
-    ) -> Tuple[bool, str]:
+    ) -> Tuple[bool, str, Optional[str]]:
         """Send verification complete using template"""
         
         display_id = claim_id if claim_id else case_id
         
         # ✅ MATCHES YOUR APPROVED TEMPLATE: verification_complete
         # Variables: {{1}}=name, {{2}}=claim_id
+        # Generate the full template message
+        template_message = f"""Dear {name},
+
+        Verification for claim ID {display_id} has been completed successfully.
+
+        Your claim details have been recorded for processing.
+
+        If additional documents are required, further communication may be shared regarding the claim process.
+
+        Regards,
+        ICS Assure Services Pvt Ltd."""
+
         body_params = [
-            {"type": "text", "text": name},       # {{1}}
-            {"type": "text", "text": display_id}  # {{2}}
+            {"type": "text", "text": name},
+            {"type": "text", "text": display_id}
         ]
-        
-        return self.send_template_message(to_number, "verification_complete", body_params)
+
+        success, msg_id = self.send_template_message(to_number, "verification_complete", body_params)
+
+        if success:
+            return True, msg_id, template_message
+
+        success, msg_id = self.send_message(to_number, template_message)
+        return success, msg_id, template_message
     # ============ SEND CONFIRMATION (Plain Text Fallback) ============
     def send_confirmation(
         self,
