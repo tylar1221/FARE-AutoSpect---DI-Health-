@@ -220,6 +220,8 @@ async def get_face_history(
 
 # ============ CREATE CASE ============
 @router.post("/", response_model=CaseResponse)
+@router.post("", response_model=CaseResponse)   # Handles /api/cases (no slash)
+
 async def create_case(
     case_data: CaseCreate,
     background_tasks: BackgroundTasks,
@@ -294,8 +296,8 @@ async def create_case(
     
     return CaseResponse.model_validate(new_case)
 # ============ LIST CASES ============
-@router.get("/", response_model=List[CaseResponse])
-@router.get("/")  # ← Keep both for redirect fix
+@router.get("/", response_model=List[CaseResponse])  # Handles /api/cases/
+@router.get("", response_model=List[CaseResponse])   # Handles /api/cases (no slash)
 async def list_cases(
     status: Optional[str] = Query(None),
     category: Optional[str] = Query(None),
