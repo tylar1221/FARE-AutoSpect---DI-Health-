@@ -544,7 +544,9 @@ async def upload_case_file(
         file_name=file.filename,
         file_url=file_url,
         file_type=file.content_type.split('/')[0] if file.content_type else 'document',
-        source="registration"
+        source="registration",
+        user_id=current_user.id
+
     )
     
     db.add(new_doc)
