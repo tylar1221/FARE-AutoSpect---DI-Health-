@@ -933,9 +933,10 @@
 
         // Build case_id to phone mapping
         let caseIdToPhone = {};
-        allCases.forEach(c => {
-          if (c.case_id && c.phone && c.phone !== '—') caseIdToPhone[c.case_id] = c.phone;
-        });
+allCases.forEach(c => {
+  const p = c.phone_number || c.phone;
+  if (c.case_id && p && p !== '—') caseIdToPhone[c.case_id] = p;
+});
 
         // Group messages by phone
         let grouped = {};

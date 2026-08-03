@@ -202,7 +202,7 @@ async def handle_text_message(from_number: str, message_text: str, message_id: s
         result = await db.execute(
             select(DICase).where(DICase.phone_number == from_number)
         )
-        case = result.scalar_one_or_none()
+        case = result.scalars().first()
         
         if not case:
             # Try to find by phone number with different formatting
@@ -401,7 +401,7 @@ async def handle_media_message(from_number: str, media_type: str, media_id: str,
         result = await db.execute(
             select(DICase).where(DICase.phone_number == from_number)
         )
-        case = result.scalar_one_or_none()
+        case = result.scalars().first()
         
         if not case:
             logger.warning(f"No case found for {from_number}")
@@ -479,7 +479,7 @@ async def handle_location_message(from_number: str, latitude: float, longitude: 
         result = await db.execute(
             select(DICase).where(DICase.phone_number == from_number)
         )
-        case = result.scalar_one_or_none()
+        case = result.scalars().first()
         
         if case:
             maps_link = f"https://www.google.com/maps?q={latitude},{longitude}"
@@ -522,7 +522,7 @@ async def get_messages(
             case_query = case_query.where(DICase.user_id == current_user.id)
         
         case_result = await db.execute(case_query)
-        case = case_result.scalar_one_or_none()
+        case = case_result.scalars().first()
         
         if not case:
             raise HTTPException(404, "Case not found or no permission")
@@ -564,7 +564,7 @@ async def send_custom_message(
             query = query.where(DICase.user_id == current_user.id)
         
         result = await db.execute(query)
-        case = result.scalar_one_or_none()
+        case = result.scalars().first()
         
         if not case:
             raise HTTPException(404, "Case not found or no permission")
@@ -577,7 +577,7 @@ async def send_custom_message(
         result = await db.execute(
             select(DICase).where(DICase.phone_number == phone)
         )
-        case = result.scalar_one_or_none()
+        case = result.scalars().first()
         if case:
             case_id = case.case_id
     else:
@@ -642,7 +642,7 @@ async def send_reminder_message(
         query = query.where(DICase.user_id == current_user.id)
     
     result = await db.execute(query)
-    case = result.scalar_one_or_none()
+    case = result.scalars().first()
     
     if not case:
         raise HTTPException(404, "Case not found or no permission")
@@ -717,7 +717,7 @@ async def send_completion_message(
         query = query.where(DICase.user_id == current_user.id)
     
     result = await db.execute(query)
-    case = result.scalar_one_or_none()
+    case = result.scalars().first()
     
     if not case:
         raise HTTPException(404, "Case not found or no permission")
@@ -790,7 +790,7 @@ async def mark_message_read(
     result = await db.execute(
         select(WhatsAppMessage).where(WhatsAppMessage.id == int(request.message_id))
     )
-    message = result.scalar_one_or_none()
+    message = result.scalars().first()
     
     if not message:
         raise HTTPException(404, "Message not found")
@@ -800,7 +800,7 @@ async def mark_message_read(
         case_result = await db.execute(
             select(DICase).where(DICase.case_id == message.case_id)
         )
-        case = case_result.scalar_one_or_none()
+        case = case_result.scalars().first()
         if case and case.user_id != current_user.id and current_user.role != "administrator":
             raise HTTPException(403, "No permission")
     
@@ -859,7 +859,7 @@ async def send_confirmation_template(
         query = query.where(DICase.user_id == current_user.id)
     
     result = await db.execute(query)
-    case = result.scalar_one_or_none()
+    case = result.scalars().first()
     
     if not case:
         raise HTTPException(404, "Case not found or no permission")
@@ -926,7 +926,7 @@ async def send_reminder_template(
         query = query.where(DICase.user_id == current_user.id)
     
     result = await db.execute(query)
-    case = result.scalar_one_or_none()
+    case = result.scalars().first()
     
     if not case:
         raise HTTPException(404, "Case not found or no permission")
@@ -991,7 +991,7 @@ async def send_completion_template(
         query = query.where(DICase.user_id == current_user.id)
     
     result = await db.execute(query)
-    case = result.scalar_one_or_none()
+    case = result.scalars().first()
     
     if not case:
         raise HTTPException(404, "Case not found or no permission")
