@@ -807,7 +807,7 @@
                     <!-- Basic Information Card -->
                     <div class="card">
                         <div class="card-header">
-                            <i class="bi bi-info-circle"></i> Case Information
+                            <i class="bi bi-info-circle"></i> Basic Information
                         </div>
                         <div class="card-body">
                             <div class="info-grid" id="basicInfo"></div>
@@ -838,8 +838,7 @@
                         </div>
                     </div>
 
-                   
-
+                 
                     <!-- Transcript Card -->
                     <div class="card">
                         <div class="card-header">
@@ -1105,7 +1104,6 @@
             document.getElementById('transcriptContent').innerHTML = currentCaseData.transcript || 'No transcript available yet. Will appear after the meeting.';
             
             await loadDocuments();
-            await loadQuestionnaire();
             
             document.getElementById('loadingState').style.display = 'none';
             document.getElementById('caseContent').style.display = 'block';
@@ -1247,44 +1245,7 @@
         if (e.target === e.currentTarget) closeViewer();
     });
     
-    // ===== LOAD QUESTIONNAIRE =====
-    async function loadQuestionnaire() {
-        const container = document.getElementById('questionnaireContent');
-        
-        const genericQuestions = [
-            "What is your full name and age?",
-            "What is your contact number?",
-            "What is the insurance policy number?",
-            "When did the symptoms first appear?",
-            "What are your current symptoms?",
-            "Have you visited any doctor/hospital?",
-            "What diagnosis was given?",
-            "What treatment has been prescribed?",
-            "Have you had any diagnostic tests?",
-            "What is the estimated treatment cost?"
-        ];
-        
-        let specificQuestions = currentCaseData.category === 'normal' 
-            ? ["Was this a sudden onset or gradual?", "Had you ever experienced this before?", "Was there any triggering event?"]
-            : ["What pre-existing condition do you have?", "When were you first diagnosed?", "What medications do you regularly take?", "Have you had any previous hospitalizations?", "Who is your regular treating doctor?", "Was this current episode related to pre-existing condition?"];
-        
-        container.innerHTML = `
-            <h5 style="margin-bottom: 12px;">Generic Questions</h5>
-            ${genericQuestions.map((q, i) => `
-                <div class="question-item">
-                    <div class="question-text">${i+1}. ${q}</div>
-                    <div class="question-answer">Not answered yet. Click "Edit" to add answers.</div>
-                </div>
-            `).join('')}
-            <h5 style="margin: 20px 0 12px;">Specific Questions</h5>
-            ${specificQuestions.map((q, i) => `
-                <div class="question-item">
-                    <div class="question-text">${q}</div>
-                    <div class="question-answer">Not answered yet. Click "Edit" to add answers.</div>
-                </div>
-            `).join('')}
-        `;
-    }
+    
     
     // ===== EVENT LISTENERS =====
     document.getElementById('editCaseBtn').addEventListener('click', () => {
