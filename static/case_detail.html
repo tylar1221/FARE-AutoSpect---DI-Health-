@@ -1191,8 +1191,9 @@
         }
         function connectWebSocket() {
     // Use WebSocket URL (change localhost to your server if needed)
-    const wsUrl = `ws://localhost:8000/api/logs/ws`;
-    
+    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    const host = window.location.host;
+    const wsUrl = `${protocol}//${host}/api/logs/ws`;
     try {
         ws = new WebSocket(wsUrl);
         
