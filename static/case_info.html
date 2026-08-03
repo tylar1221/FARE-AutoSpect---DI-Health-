@@ -1126,109 +1126,122 @@
 }
     
     // ===== LOAD DOCUMENTS WITH VISUAL PREVIEW =====
-    async function loadDocuments() {
-        try {
-            const response = await fetch(`/api/cases/${caseId}/documents`, { headers: getHeaders() });
-            if (!response.ok) throw new Error('Failed to load documents');
-            allDocuments = await response.json();
-            
-            const container = document.getElementById('documentsList');
-            const countSpan = document.getElementById('docCount');
-            
-            countSpan.textContent = `${allDocuments.length} file${allDocuments.length !== 1 ? 's' : ''}`;
-            
-            if (allDocuments.length === 0) {
-                container.innerHTML = '<p style="color: var(--ink-muted); text-align: center; padding: 30px;"><i class="bi bi-folder" style="font-size: 2rem; display: block; margin-bottom: 10px;"></i>No documents uploaded yet.</p>';
-                return;
-            }
-            
-            container.innerHTML = `<div class="doc-grid">${allDocuments.map((doc, index) => {
-                const fileType = getFileType(doc.file_name);
-                const icon = getFileIcon(fileType, doc.file_name);
-                const isImage = fileType === 'image';
-                const previewHtml = isImage 
-                    ? `<img src="${doc.file_url}" alt="${escapeHtml(doc.file_name)}" loading="lazy" onerror="this.parentElement.innerHTML='<i class=\\'bi ${icon}\\' style=\\'font-size: 3rem;\\'></i>'">`
-                    : `<i class="bi ${icon}" style="font-size: 3rem;"></i>`;
-                
-                return `
-                    <div class="doc-card" onclick="openViewer(${index})">
-                        <div class="doc-preview">
-                            ${previewHtml}
-                        </div>
-                        <div class="doc-info">
-                            <div class="doc-name" title="${escapeHtml(doc.file_name)}">${escapeHtml(doc.file_name)}</div>
-                            <div class="doc-date">${new Date(doc.uploaded_at).toLocaleString()}</div>
-                        </div>
-                        <div class="doc-actions">
-                            <button class="doc-view-btn" onclick="event.stopPropagation(); openViewer(${index})">
-                                <i class="bi bi-eye"></i> View
-                            </button>
-                            <button class="doc-download-btn" onclick="event.stopPropagation(); downloadDocument('${doc.file_url}', '${escapeHtml(doc.file_name)}')">
-                                <i class="bi bi-download"></i>
-                            </button>
-                        </div>
-                    </div>
-                `;
-            }).join('')}</div>`;
-            
-        } catch (error) {
-            document.getElementById('documentsList').innerHTML = '<p style="color: red;">Error loading documents</p>';
+    // ===== LOAD DOCUMENTS WITH IMAGE PREVIEW =====
+async function loadDocuments() {
+    try {
+        const response = await fetch(`/api/cases/${caseId}/documents`, { headers: getHeaders() });
+        if (!response.ok) throw new Error('Failed to load documents');
+        allDocuments = await response.json();
+        
+        const container = document.getElementById('documentsList');
+        const countSpan = document.getElementById('docCount');
+        
+        countSpan.textContent = `${allDocuments.length} file${allDocuments.length !== 1 ? 's' : ''}`;
+        
+        if (allDocuments.length === 0) {
+            container.innerHTML = '<p style="color: var(--ink-muted); text-align: center; padding: 30px;"><i class="bi bi-folder" style="font-size: 2rem; display: block; margin-bottom: 10px;"></i>No documents uploaded yet.</p>';
+            return;
         }
+        
+        container.innerHTML = `<div class="doc-grid">${allDocuments.map((doc, index) => {
+            const fileType = getFileType(doc.file_name);
+            const icon = getFileIcon(fileType, doc.file_name);
+            const isImage = fileType === 'image';
+            
+            // ✅ USE PROXY ENDPOINT FOR IMAGES
+            const imageUrl = isImage 
+                ? `/api/cases/${caseId}/documents/${doc.id}/image`
+                : doc.file_url;
+            
+            const previewHtml = isImage 
+                ? `<img src="${imageUrl}" alt="${escapeHtml(doc.file_name)}" loading="lazy" 
+                      onerror="this.parentElement.innerHTML='<i class=\\'bi ${icon}\\' style=\\'font-size: 3rem;\\'></i>'" 
+                      style="width:100%;height:100%;object-fit:cover;">`
+                : `<i class="bi ${icon}" style="font-size: 3rem;"></i>`;
+            
+            return `
+                <div class="doc-card" onclick="openViewer(${index})">
+                    <div class="doc-preview">
+                        ${previewHtml}
+                    </div>
+                    <div class="doc-info">
+                        <div class="doc-name" title="${escapeHtml(doc.file_name)}">${escapeHtml(doc.file_name)}</div>
+                        <div class="doc-date">${new Date(doc.uploaded_at).toLocaleString()}</div>
+                    </div>
+                    <div class="doc-actions">
+                        <button class="doc-view-btn" onclick="event.stopPropagation(); openViewer(${index})">
+                            <i class="bi bi-eye"></i> View
+                        </button>
+                        <button class="doc-download-btn" onclick="event.stopPropagation(); downloadDocument('${doc.file_url}', '${escapeHtml(doc.file_name)}')">
+                            <i class="bi bi-download"></i>
+                        </button>
+                    </div>
+                </div>
+            `;
+        }).join('')}</div>`;
+        
+    } catch (error) {
+        document.getElementById('documentsList').innerHTML = '<p style="color: red;">Error loading documents</p>';
     }
+}
     
     // ===== DOCUMENT VIEWER =====
     function openViewer(index) {
-        const doc = allDocuments[index];
-        if (!doc) return;
-        
-        const modal = document.getElementById('documentViewer');
-        const fileName = document.getElementById('viewerFileName');
-        const fileMeta = document.getElementById('viewerFileMeta');
-        const body = document.getElementById('viewerBody');
-        const downloadBtn = document.getElementById('viewerDownloadBtn');
-        const openBtn = document.getElementById('viewerOpenBtn');
-        
-        fileName.textContent = doc.file_name;
-        fileMeta.textContent = `${doc.file_type || 'Document'} · ${formatFileSize(doc.file_size)}`;
-        downloadBtn.href = doc.file_url;
-        openBtn.href = doc.file_url;
-        
-        const fileType = getFileType(doc.file_name);
-        const url = doc.file_url;
-        
-        // Determine what to show
-        let contentHtml = '';
-        
-        if (fileType === 'image') {
-            contentHtml = `<img src="${url}" alt="${escapeHtml(doc.file_name)}" onerror="this.parentElement.innerHTML='<div class=\\'unsupported\\'><i class=\\'bi bi-file-earmark\\'></i><p>Image could not be loaded</p></div>'">`;
-        } else if (fileType === 'pdf') {
-            contentHtml = `<iframe src="${url}#toolbar=1" allowfullscreen></iframe>`;
-        } else if (fileType === 'text') {
-            // Try to fetch and display text content
-            contentHtml = `<div class="text-preview" id="textPreview">Loading text content...</div>`;
-            fetch(url, { headers: getHeaders() })
-                .then(res => res.text())
-                .then(text => {
-                    document.getElementById('textPreview').textContent = text || 'Empty file';
-                })
-                .catch(() => {
-                    document.getElementById('textPreview').textContent = 'Could not load text content. Try downloading the file.';
-                });
-        } else {
-            // Other file types - show download option
-            contentHtml = `
-                <div class="unsupported">
-                    <i class="bi ${getFileIcon(fileType, doc.file_name)}"></i>
-                    <p>This file type cannot be previewed directly.</p>
-                    <p style="font-size: 0.8rem; margin-top: 8px;">Click "Download" to view the file.</p>
-                </div>
-            `;
-        }
-        
-        body.innerHTML = contentHtml;
-        modal.classList.add('active');
-        document.body.style.overflow = 'hidden';
+    const doc = allDocuments[index];
+    if (!doc) return;
+    
+    const modal = document.getElementById('documentViewer');
+    const fileName = document.getElementById('viewerFileName');
+    const fileMeta = document.getElementById('viewerFileMeta');
+    const body = document.getElementById('viewerBody');
+    const downloadBtn = document.getElementById('viewerDownloadBtn');
+    const openBtn = document.getElementById('viewerOpenBtn');
+    
+    fileName.textContent = doc.file_name;
+    fileMeta.textContent = `${doc.file_type || 'Document'} · ${formatFileSize(doc.file_size)}`;
+    downloadBtn.href = doc.file_url;
+    openBtn.href = doc.file_url;
+    
+    const fileType = getFileType(doc.file_name);
+    const url = doc.file_url;
+    
+    // ✅ USE PROXY FOR IMAGES
+    const imageUrl = fileType === 'image' 
+        ? `/api/cases/${caseId}/documents/${doc.id}/image`
+        : url;
+    
+    let contentHtml = '';
+    
+    if (fileType === 'image') {
+        contentHtml = `<img src="${imageUrl}" alt="${escapeHtml(doc.file_name)}" 
+                          onerror="this.parentElement.innerHTML='<div class=\\'unsupported\\'><i class=\\'bi bi-file-earmark\\'></i><p>Image could not be loaded</p></div>'"
+                          style="max-width:100%;max-height:70vh;object-fit:contain;border-radius:8px;background:white;">`;
+    } else if (fileType === 'pdf') {
+        contentHtml = `<iframe src="${url}#toolbar=1" allowfullscreen></iframe>`;
+    } else if (fileType === 'text') {
+        contentHtml = `<div class="text-preview" id="textPreview">Loading text content...</div>`;
+        fetch(url, { headers: getHeaders() })
+            .then(res => res.text())
+            .then(text => {
+                document.getElementById('textPreview').textContent = text || 'Empty file';
+            })
+            .catch(() => {
+                document.getElementById('textPreview').textContent = 'Could not load text content. Try downloading the file.';
+            });
+    } else {
+        contentHtml = `
+            <div class="unsupported">
+                <i class="bi ${getFileIcon(fileType, doc.file_name)}"></i>
+                <p>This file type cannot be previewed directly.</p>
+                <p style="font-size: 0.8rem; margin-top: 8px;">Click "Download" to view the file.</p>
+            </div>
+        `;
     }
+    
+    body.innerHTML = contentHtml;
+    modal.classList.add('active');
+    document.body.style.overflow = 'hidden';
+}
     
     function closeViewer() {
         document.getElementById('documentViewer').classList.remove('active');

@@ -505,7 +505,73 @@ async def get_case_documents(
         }
         for doc in documents
     ]
+# ============ GET IMAGE PROXY ============
+from fastapi.responses import StreamingResponse
+import httpx
 
+@router.get("/{case_id}/documents/{doc_id}/image")
+async def get_document_image(
+    case_id: str,
+    doc_id: int,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """Proxy for document images from Google Drive or local storage"""
+    
+    # Check case exists and user has permission
+    query = select(DICase).where(DICase.case_id == case_id)
+    if current_user.role != "administrator":
+        query = query.where(DICase.user_id == current_user.id)
+    
+    result = await db.execute(query)
+    case = result.scalar_one_or_none()
+    
+    if not case:
+        raise HTTPException(404, f"Case {case_id} not found")
+    
+    # Get document
+    doc_result = await db.execute(
+        select(CaseDocument).where(
+            CaseDocument.case_id == case_id,
+            CaseDocument.id == doc_id
+        )
+    )
+    doc = doc_result.scalar_one_or_none()
+    
+    if not doc:
+        raise HTTPException(404, "Document not found")
+    
+    file_url = doc.file_url
+    
+    # Check if it's an image
+    if not doc.file_type or doc.file_type != "image":
+        raise HTTPException(400, "Not an image file")
+    
+    # If it's a local file
+    if file_url.startswith("/uploads/"):
+        # Local file path
+        local_path = file_url.replace("/uploads/", "uploads/")
+        if os.path.exists(local_path):
+            return FileResponse(local_path, media_type="image/png")
+        raise HTTPException(404, "Image file not found")
+    
+    # If it's a Google Drive link - proxy it
+    if "drive.google.com" in file_url or "googleapis.com" in file_url:
+        try:
+            async with httpx.AsyncClient() as client:
+                # Get the file from Google Drive
+                response = await client.get(file_url)
+                if response.status_code == 200:
+                    content_type = response.headers.get("content-type", "image/png")
+                    return StreamingResponse(
+                        iter([response.content]),
+                        media_type=content_type
+                    )
+        except Exception as e:
+            print(f"Error proxying image: {e}")
+    
+    # If it's a direct image URL, just redirect
+    return RedirectResponse(url=file_url)
 # ============ ADD DOCUMENT ============
 @router.post("/{case_id}/documents")
 async def add_document(
