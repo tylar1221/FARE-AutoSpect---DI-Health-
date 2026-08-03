@@ -1189,61 +1189,60 @@
             localStorage.removeItem('user');
             window.location.href = '/static/login.html';
         }
-        function connectWebSocket() {
-    // Use WebSocket URL (change localhost to your server if needed)
+        // In case_detail.html, update the connectWebSocket function:
+
+function connectWebSocket() {
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
     const host = window.location.host;
     const wsUrl = `${protocol}//${host}/api/logs/ws`;
+    
     try {
         ws = new WebSocket(wsUrl);
         
         ws.onopen = function() {
             console.log('✅ WebSocket connected');
             reconnectAttempts = 0;
-            // Show a small indicator
-            showToast('Real-time updates connected', 'info');
+            // Don't show toast for WebSocket - it's noisy
         };
         
         ws.onmessage = function(event) {
-            const data = JSON.parse(event.data);
-            console.log('📨 Log received:', data);
-            
-            // Handle different message types
-            switch(data.type) {
-                case 'case_created':
-                    showToast(`📋 ${data.message}`, 'success');
-                    // Refresh cases automatically
-                    loadCases();
-                    break;
-                case 'case_updated':
-                    showToast(`✏️ ${data.message}`, 'info');
-                    loadCases();
-                    break;
-                case 'document_uploaded':
-                    showToast(`📎 ${data.message}`, 'success');
-                    break;
-                case 'log':
-                    console.log('Log:', data.message);
-                    break;
-                default:
-                    console.log('Unknown message type:', data);
+            try {
+                const data = JSON.parse(event.data);
+                console.log('📨 Log received:', data);
+                
+                switch(data.type) {
+                    case 'case_created':
+                    case 'case_updated':
+                    case 'document_uploaded':
+                        // Refresh cases silently
+                        loadCases();
+                        break;
+                    case 'connected':
+                        console.log('Connected to log stream');
+                        break;
+                    default:
+                        console.log('Unknown message type:', data);
+                }
+            } catch (e) {
+                console.error('Error parsing WebSocket message:', e);
             }
         };
         
         ws.onerror = function(error) {
             console.error('WebSocket error:', error);
+            // Don't show toast - it's expected if WebSocket isn't implemented
         };
         
         ws.onclose = function() {
             console.log('WebSocket disconnected');
-            // Try to reconnect
             if (reconnectAttempts < maxReconnectAttempts) {
                 reconnectAttempts++;
-                setTimeout(connectWebSocket, 3000);
+                setTimeout(connectWebSocket, 5000);
             }
         };
     } catch (error) {
         console.error('WebSocket connection failed:', error);
+        // Silently fail - WebSocket is optional
     }
 }
 
