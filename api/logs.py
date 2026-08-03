@@ -1,59 +1,71 @@
 # api/logs.py
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 from typing import List
-import json
-import logging
+import asyncio
+from datetime import datetime
 
 router = APIRouter(prefix="/api/logs", tags=["Logs"])
-logger = logging.getLogger(__name__)
 
-class ConnectionManager:
-    def __init__(self):
-        self.active_connections: List[WebSocket] = []
-
-    async def connect(self, websocket: WebSocket):
-        await websocket.accept()
-        self.active_connections.append(websocket)
-
-    def disconnect(self, websocket: WebSocket):
-        if websocket in self.active_connections:
-            self.active_connections.remove(websocket)
-
-    async def broadcast(self, message: dict):
-        for connection in self.active_connections:
-            try:
-                await connection.send_json(message)
-            except:
-                pass
-
-manager = ConnectionManager()
+# Store all active WebSocket connections
+connected_clients: List[WebSocket] = []
 
 @router.websocket("/ws")
-async def websocket_endpoint(websocket: WebSocket):
+async def websocket_logs(websocket: WebSocket):
     """WebSocket endpoint for real-time logs"""
-    await manager.connect(websocket)
+    await websocket.accept()
+    connected_clients.append(websocket)
+    print(f"🟢 Frontend connected (Total clients: {len(connected_clients)})")
+    
+    # Send welcome message
+    await websocket.send_json({
+        "type": "info",
+        "message": "Connected to log stream",
+        "timestamp": datetime.now().isoformat()
+    })
+    
     try:
-        # Send initial connection message
-        await websocket.send_json({
-            "type": "connected",
-            "message": "Connected to log stream"
-        })
-        
-        # Keep connection alive
         while True:
-            # Wait for messages (ping/pong)
+            # Keep connection alive, wait for messages (or just ping)
+            # You can also receive messages from client if needed
             data = await websocket.receive_text()
-            if data == "ping":
-                await websocket.send_json({"type": "pong"})
-                
+            # Echo back for testing
+            await websocket.send_json({
+                "type": "echo",
+                "data": data,
+                "timestamp": datetime.now().isoformat()
+            })
     except WebSocketDisconnect:
-        manager.disconnect(websocket)
-        logger.info("WebSocket disconnected")
+        connected_clients.remove(websocket)
+        print(f"🔴 Frontend disconnected (Total clients: {len(connected_clients)})")
     except Exception as e:
-        logger.error(f"WebSocket error: {e}")
-        manager.disconnect(websocket)
+        print(f"WebSocket error: {e}")
+        if websocket in connected_clients:
+            connected_clients.remove(websocket)
 
-# Function to push logs to WebSocket
-async def push_log_to_ws(log_data: dict):
-    """Push a log message to all connected WebSocket clients"""
-    await manager.broadcast(log_data)
+
+@router.post("/push")
+async def push_log(data: dict):
+    """Push a log message to all connected clients"""
+    message = {
+        "type": data.get("type", "log"),
+        "message": data.get("message", ""),
+        "data": data.get("data", {}),
+        "timestamp": datetime.now().isoformat()
+    }
+    
+    # Send to all connected clients
+    for ws in connected_clients[:]:  # Copy list to avoid modification during iteration
+        try:
+            await ws.send_json(message)
+        except Exception as e:
+            print(f"Failed to send to client: {e}")
+            if ws in connected_clients:
+                connected_clients.remove(ws)
+    
+    return {"ok": True, "clients": len(connected_clients)}
+
+
+@router.get("/clients")
+async def get_client_count():
+    """Get number of connected clients"""
+    return {"connected_clients": len(connected_clients)}
