@@ -11,7 +11,7 @@ from app.models import User
 from services.whatsapp_service import get_whatsapp_service
 
 from app.database import get_db
-from app.models import DICase, ScheduledSlot
+from app.models import DICase
 from app.auth_utils import get_current_user
 from services.calendar_service import CalendarService
 from api.logs import push_log
@@ -102,23 +102,7 @@ async def get_available_slots(
             duration_minutes=30
         )
         
-        result = await db.execute(
-            select(ScheduledSlot).where(
-                ScheduledSlot.slot_date == target_date,
-                ScheduledSlot.status == "booked"
-            )
-        )
-        db_booked = result.scalars().all()
         
-        for slot in slots:
-            for db_slot in db_booked:
-                db_start = db_slot.slot_start.strftime("%H:%M")
-                if slot["start"] == db_start:
-                    slot["is_available"] = False
-                    if not slot["booked_by"]:
-                        slot["booked_by"] = f"DB: {db_slot.case_id}"
-                    slot["case_id"] = db_slot.case_id
-                    slot["meet_link"] = db_slot.meet_link
         
         return {
             "date": slot_date,
@@ -199,16 +183,7 @@ async def book_meeting(
         if not event_id or not meet_link:
             raise HTTPException(500, "Failed to create calendar event")
         
-        # 5. Save booking to database
-        booking = ScheduledSlot(
-            case_id=case.case_id,
-            slot_date=slot_date,
-            slot_start=start_naive.time(),
-            slot_end=end_naive.time(),
-            meet_link=meet_link,
-            status="booked"
-        )
-        db.add(booking)
+    
         
         # 6. Update case
         case.status = "scheduled"
