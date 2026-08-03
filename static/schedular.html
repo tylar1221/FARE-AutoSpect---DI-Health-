@@ -144,7 +144,26 @@
     }
     .case-row .folder-link:hover { background: #dbeafe; border-color: #93c5fd; transform: translateY(-1px); }
     .case-row .folder-link i { margin-right: 4px; }
-
+#slotsModal {
+      display: none; position: fixed; inset: 0;
+      background: rgba(0,0,0,0.5); z-index: 1000;
+      align-items: center; justify-content: center;
+    }
+    #slotsModal.open { display: flex; }
+    .slot-btn {
+      padding: 10px 8px; border-radius: 10px; border: 1px solid var(--border);
+      background: white; cursor: pointer; font-size: 0.78rem; font-weight: 600;
+      transition: all 0.15s; text-align: center;
+    }
+    .slot-btn:hover { background: #eff6ff; border-color: #3b82f6; transform: translateY(-1px); }
+    .slot-btn.taken {
+      background: #f8fafc; color: var(--text3); cursor: not-allowed;
+      text-decoration: line-through; opacity: 0.6;
+    }
+    .slot-grid {
+      display: grid; grid-template-columns: repeat(auto-fill, minmax(90px, 1fr));
+      gap: 8px; padding: 16px 20px;
+    }
     /* ========== BOOK NOW BUTTON ========== */
     .book-now-btn {
       padding: 6px 14px; border-radius: 20px; border: none;
@@ -451,7 +470,22 @@
       </div>
     </div>
   </div>
-
+<!-- ========== SLOTS PICKER MODAL ========== -->
+  <div id="slotsModal">
+    <div class="msg-modal-content" style="max-width:600px;">
+      <div class="msg-modal-header">
+        <h3><i class="fas fa-calendar-alt" style="color:var(--primary);"></i> Choose a Slot — <span id="slotsCaseId"></span></h3>
+        <button class="msg-modal-close" onclick="closeSlotsModal()">×</button>
+      </div>
+      <div style="padding:12px 20px;border-bottom:1px solid var(--border);display:flex;gap:8px;align-items:center;">
+        <label style="font-size:0.8rem;color:var(--text2);">Date:</label>
+        <input type="date" id="slotsDateInput" style="padding:6px 10px;border-radius:8px;border:1px solid var(--border);font-size:0.8rem;">
+      </div>
+      <div class="msg-modal-body" id="slotsListDiv" style="min-height:200px;">
+        <div style="text-align:center;padding:40px;color:var(--text3);">Loading slots...</div>
+      </div>
+    </div>
+  </div>
   <script>
     // ========== CONFIG ==========
     const API_BASE = window.location.origin;
@@ -740,6 +774,9 @@
           actionHtml = `
             <button class="book-now-btn" onclick="event.stopPropagation(); bookNow('${c.case_id}')">
               📅 Book Now
+            </button>
+            <button class="book-now-btn" style="background: linear-gradient(135deg,#7c3aed,#a78bfa);" onclick="event.stopPropagation(); openSlotsModal('${c.case_id}')">
+              🗓️ View Slots
             </button>
           `;
         }
@@ -1101,7 +1138,111 @@
         showToast('❌ Error marking all as read', true);
       }
     }
+// ========== SLOTS PICKER ==========
+    let currentSlotsCaseId = null;
 
+    function openSlotsModal(caseId) {
+      currentSlotsCaseId = caseId;
+      document.getElementById('slotsCaseId').textContent = caseId;
+      document.getElementById('slotsModal').classList.add('open');
+
+      const dateInput = document.getElementById('slotsDateInput');
+      dateInput.value = formatYMD(new Date());
+      dateInput.onchange = () => loadSlotsForModal(dateInput.value);
+
+      loadSlotsForModal(dateInput.value);
+    }
+
+    function closeSlotsModal() {
+      document.getElementById('slotsModal').classList.remove('open');
+      currentSlotsCaseId = null;
+    }
+
+    async function loadSlotsForModal(dateStr) {
+      const container = document.getElementById('slotsListDiv');
+      container.innerHTML = '<div style="text-align:center;padding:40px;color:var(--text3);">Loading slots...</div>';
+
+      try {
+        const response = await fetch(`/api/scheduling/slots?slot_date=${dateStr}`, { headers: getHeaders() });
+        const data = await response.json();
+
+        if (!data.working_day) {
+          container.innerHTML = `<div style="text-align:center;padding:40px;color:var(--text3);">
+            <i class="fas fa-calendar-times" style="font-size:2rem;display:block;margin-bottom:8px;"></i>
+            ${data.message || 'Not a working day'}
+          </div>`;
+          return;
+        }
+
+        if (!data.slots || data.slots.length === 0) {
+          container.innerHTML = `<div style="text-align:center;padding:40px;color:var(--text3);">No slots configured for this day</div>`;
+          return;
+        }
+
+        const availableCount = data.slots.filter(s => s.is_available).length;
+
+        container.innerHTML = `
+          <div style="padding:8px 20px 0;font-size:0.75rem;color:var(--text3);">
+            ${availableCount} of ${data.slots.length} slots available
+          </div>
+          <div class="slot-grid">
+            ${data.slots.map(s => {
+              if (s.is_available) {
+                return `<button class="slot-btn" onclick="bookSpecificSlot('${dateStr}', '${s.start}')">${s.start}</button>`;
+              } else {
+                return `<button class="slot-btn taken" disabled title="${s.booked_by || 'Booked'}">${s.start}</button>`;
+              }
+            }).join('')}
+          </div>
+        `;
+      } catch (e) {
+        container.innerHTML = `<div style="text-align:center;padding:40px;color:var(--red);">Error loading slots: ${e.message}</div>`;
+      }
+    }
+
+    async function bookSpecificSlot(dateStr, timeStr) {
+      if (!currentSlotsCaseId) return;
+      if (!confirm(`Book ${currentSlotsCaseId} for ${dateStr} at ${timeStr}?`)) return;
+
+      showToast(`Booking ${timeStr}...`);
+
+      try {
+        const response = await fetch('/api/scheduling/book', {
+          method: 'POST',
+          headers: getHeaders(),
+          body: JSON.stringify({
+            case_id: currentSlotsCaseId,
+            slot_date: dateStr,
+            slot_time: timeStr,
+            duration_minutes: 30
+          })
+        });
+
+        const data = await response.json();
+
+        if (response.ok) {
+          showToast(`✅ Booked ${timeStr} — meeting confirmed!`);
+          closeSlotsModal();
+          await fetchCases();
+        } else {
+          showToast(`❌ ${data.detail || 'Booking failed'}`, true);
+          loadSlotsForModal(dateStr); // refresh in case slot got taken meanwhile
+        }
+      } catch (e) {
+        showToast(`❌ Error: ${e.message}`, true);
+      }
+    }
+
+    // Close slots modal on background click / Escape
+    document.getElementById('slotsModal').addEventListener('click', function(e) {
+      if (e.target === this) closeSlotsModal();
+    });
+    document.addEventListener('keydown', function(e) {
+      if (e.key === 'Escape') {
+        const m = document.getElementById('slotsModal');
+        if (m.classList.contains('open')) closeSlotsModal();
+      }
+    });
     // ========== EVENT LISTENERS ==========
     document.getElementById('refreshAllBtn').addEventListener('click', fullRefresh);
 
