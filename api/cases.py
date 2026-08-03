@@ -295,30 +295,34 @@ async def create_case(
     return CaseResponse.model_validate(new_case)
 # ============ LIST CASES ============
 @router.get("/", response_model=List[CaseResponse])
+@router.get("/")  # ← Keep both for redirect fix
 async def list_cases(
     status: Optional[str] = Query(None),
     category: Optional[str] = Query(None),
     limit: int = Query(100, le=1000),
     offset: int = Query(0),
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user)  # ← ADD THIS
-
+    current_user: User = Depends(get_current_user)
 ):
-    query = select(DICase)
+    # ✅ Start with base query
+    query = select(DICase).where(DICase.user_id == current_user.id)
     
+    # ✅ Add filters AFTER the user filter
     if status:
         query = query.where(DICase.status == status)
     if category:
         query = query.where(DICase.category == category)
     
-    query = select(DICase).where(DICase.user_id == current_user.id)
+    # Add ordering
+    query = query.order_by(DICase.created_at.desc())
+    
+    # Apply pagination
+    query = query.limit(limit).offset(offset)
     
     result = await db.execute(query)
     cases = result.scalars().all()
     
     return [CaseResponse.model_validate(case) for case in cases]
-
-
 # ============ GET SINGLE CASE ============
 @router.get("/{case_id}", response_model=CaseResponse)
 async def get_case(
@@ -583,14 +587,29 @@ async def delete_document(
     await db.commit()
     
     return {"message": "Document deleted successfully"}
-@router.get("/admin/all-cases")
+@router.get("/admin/all-cases", response_model=List[CaseResponse])
+@router.get("/admin/all-cases/")  # ← Handle trailing slash
 async def admin_list_all_cases(
+    status: Optional[str] = Query(None),
+    category: Optional[str] = Query(None),
+    limit: int = Query(100, le=1000),
+    offset: int = Query(0),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_admin_user)  # ← ADMIN ONLY
 ):
-    """Admin only - see ALL cases from ALL users"""
+    """Admin only - see ALL cases from ALL users with filters"""
     
-    result = await db.execute(select(DICase))
+    query = select(DICase)
+    
+    if status:
+        query = query.where(DICase.status == status)
+    if category:
+        query = query.where(DICase.category == category)
+    
+    query = query.order_by(DICase.created_at.desc())
+    query = query.limit(limit).offset(offset)
+    
+    result = await db.execute(query)
     cases = result.scalars().all()
     
     return [CaseResponse.model_validate(case) for case in cases]
