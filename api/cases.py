@@ -506,8 +506,9 @@ async def get_case_documents(
         for doc in documents
     ]
 # ============ GET IMAGE PROXY ============
-from fastapi.responses import StreamingResponse
+from fastapi.responses import StreamingResponse, FileResponse, RedirectResponse
 import httpx
+import os
 
 @router.get("/{case_id}/documents/{doc_id}/image")
 async def get_document_image(
@@ -549,7 +550,6 @@ async def get_document_image(
     
     # If it's a local file
     if file_url.startswith("/uploads/"):
-        # Local file path
         local_path = file_url.replace("/uploads/", "uploads/")
         if os.path.exists(local_path):
             return FileResponse(local_path, media_type="image/png")
@@ -558,19 +558,43 @@ async def get_document_image(
     # If it's a Google Drive link - proxy it
     if "drive.google.com" in file_url or "googleapis.com" in file_url:
         try:
-            async with httpx.AsyncClient() as client:
-                # Get the file from Google Drive
-                response = await client.get(file_url)
-                if response.status_code == 200:
-                    content_type = response.headers.get("content-type", "image/png")
-                    return StreamingResponse(
-                        iter([response.content]),
-                        media_type=content_type
-                    )
+            # Extract file ID from Google Drive URL
+            import re
+            file_id_match = re.search(r'/d/([a-zA-Z0-9_-]+)', file_url)
+            if not file_id_match:
+                # Try alternative pattern for direct download links
+                file_id_match = re.search(r'id=([a-zA-Z0-9_-]+)', file_url)
+            
+            if file_id_match:
+                file_id = file_id_match.group(1)
+                # Use Google's direct download URL
+                direct_url = f"https://drive.google.com/uc?export=download&id={file_id}"
+                
+                async with httpx.AsyncClient(timeout=30.0) as client:
+                    response = await client.get(direct_url, follow_redirects=True)
+                    if response.status_code == 200:
+                        content_type = response.headers.get("content-type", "image/png")
+                        return StreamingResponse(
+                            iter([response.content]),
+                            media_type=content_type,
+                            headers={"Cache-Control": "public, max-age=3600"}
+                        )
+            else:
+                # Try direct fetch of the original URL
+                async with httpx.AsyncClient(timeout=30.0, follow_redirects=True) as client:
+                    response = await client.get(file_url)
+                    if response.status_code == 200:
+                        content_type = response.headers.get("content-type", "image/png")
+                        return StreamingResponse(
+                            iter([response.content]),
+                            media_type=content_type,
+                            headers={"Cache-Control": "public, max-age=3600"}
+                        )
         except Exception as e:
             print(f"Error proxying image: {e}")
+            raise HTTPException(500, f"Error loading image: {str(e)}")
     
-    # If it's a direct image URL, just redirect
+    # If all else fails, try redirect
     return RedirectResponse(url=file_url)
 # ============ ADD DOCUMENT ============
 @router.post("/{case_id}/documents")
