@@ -1041,6 +1041,27 @@ async def send_completion_template(
         "message_id": msg_id,
         "case_id": case.case_id
     }
+
+
+
+@router.post("/transcribe/trigger")
+async def trigger_health_transcription(
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """Manually trigger health transcription"""
+    from services.transcribe_service import run_health_transcribe_cycle
+    from services.google_drive_service import GoogleDriveService
+    
+    # Get Drive service
+    drive_service = GoogleDriveService()
+    if not drive_service.service:
+        raise HTTPException(500, "Google Drive service not available")
+    
+    # Run transcription
+    await run_health_transcribe_cycle(drive_service.service)
+    
+    return {"success": True, "message": "Health transcription triggered"}
 @router.get("/messages/unread-count")
 async def get_unread_count(
     db: AsyncSession = Depends(get_db),

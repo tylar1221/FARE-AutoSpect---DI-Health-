@@ -55,7 +55,42 @@ app = FastAPI(
     version="1.0.0",
     lifespan=lifespan  # ← Uses the single lifespan function
 )
+# In main.py - add after app creation
 
+import asyncio
+import schedule
+import threading
+import time
+from services.transcribe_service import run_health_transcribe_cycle
+from services.google_drive_service import GoogleDriveService
+
+def run_health_scheduler():
+    """Run health transcription every 5 minutes"""
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
+    
+    drive_service = GoogleDriveService()
+    if not drive_service.service:
+        print("❌ Drive service not available for scheduler")
+        return
+    
+    while True:
+        try:
+            print("🕐 Running health transcription...")
+            loop.run_until_complete(
+                run_health_transcribe_cycle(drive_service.service)
+            )
+        except Exception as e:
+            print(f"❌ Scheduler error: {e}")
+        time.sleep(300)  # 5 minutes
+
+
+# Start scheduler thread
+if not os.environ.get('HEALTH_SCHEDULER_STARTED'):
+    os.environ['HEALTH_SCHEDULER_STARTED'] = 'true'
+    scheduler_thread = threading.Thread(target=run_health_scheduler, daemon=True)
+    scheduler_thread.start()
+    print("✅ Health transcription scheduler started (every 5 min)")
 # CORS
 app.add_middleware(
     CORSMiddleware,
