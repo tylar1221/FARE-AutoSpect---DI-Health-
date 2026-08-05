@@ -936,7 +936,7 @@
             </div>
             <div class="date-chip" id="datechip"></div>
         </div>
-        <div id="adminDashboardContainer" style="display: none; margin-left: 8px;">
+    <div id="adminDashboardContainer" style="display: none; margin-left: 8px; display: none; gap: 8px;">
     <a href="/static/admin_dashboard.html" class="btn-admin-dashboard" style="
         background: linear-gradient(135deg, #7c3aed, #6d28d9);
         color: white;
@@ -952,10 +952,30 @@
         gap: 6px;
         transition: all 0.2s;
         font-family: 'DM Sans', sans-serif;
+        margin-right: 8px;
     ">
         <i class="bi bi-graph-up-arrow"></i> Admin Dashboard
     </a>
-</div><div id="adminDashboardContainer" style="display: none; margin-left: 8px;">
+    <a href="/static/user_management.html" class="btn-user-manager" style="
+        background: linear-gradient(135deg, #0891b2, #0e7490);
+        color: white;
+        border: none;
+        padding: 6px 16px;
+        border-radius: 8px;
+        cursor: pointer;
+        font-size: 0.75rem;
+        font-weight: 600;
+        text-decoration: none;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        transition: all 0.2s;
+        font-family: 'DM Sans', sans-serif;
+    ">
+        <i class="bi bi-people-fill"></i> User Management
+    </a>
+</div>
+<div id="adminDashboardContainer" style="display: none; margin-left: 8px;">
     <a href="/static/admin_dashboard.html" class="btn-admin-dashboard" style="
         background: linear-gradient(135deg, #7c3aed, #6d28d9);
         color: white;
@@ -1643,7 +1663,7 @@ function loadUserContext() {
             if (user.role === 'administrator') {
                 adminViewAll = true;   // ← add this line
 
-                document.getElementById('adminDashboardContainer').style.display = 'block';
+                document.getElementById('adminDashboardContainer').style.display = 'flex';
                 
                 // Add admin toggle to the header
                 const headerRight = document.querySelector('.header-right');
