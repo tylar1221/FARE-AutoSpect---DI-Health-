@@ -138,7 +138,7 @@ class CalendarService:
       
         formatted_case_id = case_id if case_id.startswith("H-") else f"H-{case_id}"
         # Create event summary matching health system format
-        event_summary = f"Case ({formatted_case_id})"
+        event_summary = f"Health_Case ({formatted_case_id})"
         
         event = {
             "summary": event_summary,
@@ -241,6 +241,6 @@ class CalendarService:
                 "meet_link": meet_link if not is_available else None
             })
             
-            current += timedelta(minutes=15)
+            current += timedelta(minutes=duration_minutes)
         
         return slots

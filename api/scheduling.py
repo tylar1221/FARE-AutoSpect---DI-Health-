@@ -41,7 +41,7 @@ class BookingRequest(BaseModel):
     case_id: str
     slot_date: str
     slot_time: str
-    duration_minutes: int = 30
+    duration_minutes: int = 10
 
 # ============ GET CALENDAR INFO ============
 @router.get("/calendar-info")
@@ -99,7 +99,7 @@ async def get_available_slots(
         
         slots = await calendar.get_available_slots_with_metadata(
             date_obj=target_date,
-            duration_minutes=30
+            duration_minutes=10
         )
         
         
