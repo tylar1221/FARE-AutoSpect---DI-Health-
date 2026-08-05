@@ -135,10 +135,8 @@ class CalendarService:
         
         # Format case_id to match health pattern: H-ICS-260425-DB660
         # Ensure case_id is in proper format
-        formatted_case_id = case_id
-        if not case_id.startswith("H-"):
-            formatted_case_id = f"H-{case_id}" if not case_id.startswith("ICS-") else case_id
-        
+      
+        formatted_case_id = case_id if case_id.startswith("H-") else f"H-{case_id}"
         # Create event summary matching health system format
         event_summary = f"Case ({formatted_case_id})"
         
@@ -149,7 +147,7 @@ class CalendarService:
                 f"Patient: {case_name}\n"
                 f"Phone: {phone_number}\n"
                 f"Scheduled via FARE AutoSpect\n"
-                f"Health Recording: (H-{formatted_case_id})" if formatted_case_id.startswith("H-") else f"Health Recording: ({formatted_case_id})"
+                f"Health Recording: ({formatted_case_id})"
             ),
             "start": {
                 "dateTime": start_dt.isoformat(),
