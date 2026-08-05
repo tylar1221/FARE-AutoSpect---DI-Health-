@@ -800,49 +800,41 @@
         return;
     }
 
-    // Debug: Log the data structure
-    console.log('📊 All cases with user_id:', cases.map(c => ({
-        case_id: c.case_id,
-        user_id: c.user_id,
-        name: c.name,
-        status: c.status
-    })));
-    
-    console.log('👤 All investigators:', investigators.map(i => ({
-        id: i.id,
-        username: i.username,
-        role: i.role
-    })));
-
-    // Build a map of investigator IDs to usernames for quick lookup
+    // Build a map of investigator IDs to usernames (store both string and number versions)
     const investigatorMap = {};
     investigators.forEach(inv => {
-        // Store by multiple possible ID formats
-        if (inv.id) investigatorMap[String(inv.id)] = inv.username;
-        if (inv._id) investigatorMap[String(inv._id)] = inv.username;
-        if (inv.userId) investigatorMap[String(inv.userId)] = inv.username;
+        // Store by ID as both string and number
+        if (inv.id) {
+            investigatorMap[String(inv.id)] = inv.username;
+            investigatorMap[Number(inv.id)] = inv.username; // Store as number too
+        }
+        if (inv._id) {
+            investigatorMap[String(inv._id)] = inv.username;
+            investigatorMap[Number(inv._id)] = inv.username;
+        }
+        if (inv.userId) {
+            investigatorMap[String(inv.userId)] = inv.username;
+            investigatorMap[Number(inv.userId)] = inv.username;
+        }
         // Also store by username itself
         investigatorMap[inv.username] = inv.username;
+        investigatorMap[inv.username.toLowerCase()] = inv.username;
     });
     
-    console.log('🗺️ Investigator Map:', investigatorMap);
+    console.log('🗺️ Updated Investigator Map:', investigatorMap);
 
-    // Find which cases have user_id that matches an investigator
-    const matchedCases = cases.filter(c => {
-        if (!c.user_id) return false;
-        const userIdStr = String(c.user_id);
-        return investigatorMap[userIdStr] !== undefined;
-    });
-    
-    console.log(`✅ Matched ${matchedCases.length} cases to investigators`);
-
-    // Also show cases without an investigator (unassigned)
+    // Find unassigned cases
     const unassignedCases = cases.filter(c => {
-        if (!c.user_id) return true;
+        if (!c.user_id && c.user_id !== 0) return true;
         const userIdStr = String(c.user_id);
-        return investigatorMap[userIdStr] === undefined;
+        const userIdNum = Number(c.user_id);
+        // Check both string and number versions
+        return !investigatorMap[userIdStr] && !investigatorMap[userIdNum];
     });
     
+    console.log(`✅ Matched ${cases.length - unassignedCases.length} cases to investigators`);
+    console.log(`❌ ${unassignedCases.length} cases unassigned`);
+
     let unassignedHtml = '';
     if (unassignedCases.length > 0) {
         unassignedHtml = `
@@ -863,15 +855,20 @@
     }
 
     const investigatorsHtml = investigators.map(inv => {
-        // MATCH CASES BY USER_ID (the user who created/owns the case)
+        // MATCH CASES BY USER_ID - Check both string and number
         const userCases = cases.filter(c => {
-            if (!c.user_id) return false;
-            // Try matching by ID in multiple formats
+            if (!c.user_id && c.user_id !== 0) return false;
             const userIdStr = String(c.user_id);
+            const userIdNum = Number(c.user_id);
+            // Check if this case's user_id matches this investigator's ID
             return userIdStr === String(inv.id) || 
-                   userIdStr === String(inv._id) ||
-                   userIdStr === String(inv.userId) ||
-                   userIdStr === inv.username;
+                   userIdNum === Number(inv.id) ||
+                   userIdStr === String(inv._id) || 
+                   userIdNum === Number(inv._id) ||
+                   userIdStr === String(inv.userId) || 
+                   userIdNum === Number(inv.userId) ||
+                   userIdStr === inv.username ||
+                   userIdStr === inv.username.toLowerCase();
         });
         
         const total = userCases.length;
@@ -879,7 +876,6 @@
         const completed = userCases.filter(c => c.status === 'completed').length;
         const scheduled = userCases.filter(c => c.status === 'scheduled').length;
         const nonWorkable = userCases.filter(c => c.status === 'non_workable' || c.status === 'failed').length;
-        const workable = userCases.filter(c => c.status !== 'non_workable' && c.status !== 'failed').length;
 
         const completionRate = total > 0 ? Math.round((completed / total) * 100) : 0;
         
