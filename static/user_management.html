@@ -934,8 +934,10 @@
     }
 
     const response = await fetch(endpoint, options);
+    console.log('DEBUG apiRequest', endpoint, 'status:', response.status);
     if (!response.ok) {
         const error = await response.json();
+        console.log('DEBUG apiRequest error body:', error);
         throw new Error(error.detail || 'Request failed');
     }
     return await response.json();
@@ -988,18 +990,20 @@
         // USER MANAGEMENT FUNCTIONS
         // ============================================================
         async function loadUsers() {
-            try {
-                const data = await apiRequest('/api/auth/users');
-                renderUsers(data.users);
-                updateStats(data.users);
-                document.getElementById('loadingUsers').style.display = 'none';
-                document.getElementById('userTableWrap').style.display = 'block';
-            } catch (error) {
-                console.error('Failed to load users:', error);
-                document.getElementById('loadingUsers').style.display = 'none';
-                showAlert('listAlert', 'Failed to load users: ' + error.message, 'error');
-            }
-        }
+    try {
+        console.log('DEBUG: calling /api/auth/users');
+        const data = await apiRequest('/api/auth/users');
+        console.log('DEBUG: /api/auth/users response', data);
+        renderUsers(data.users);
+        updateStats(data.users);
+        document.getElementById('loadingUsers').style.display = 'none';
+        document.getElementById('userTableWrap').style.display = 'block';
+    } catch (error) {
+        console.error('DEBUG: Failed to load users:', error);
+        document.getElementById('loadingUsers').style.display = 'none';
+        showAlert('listAlert', 'Failed to load users: ' + error.message, 'error');
+    }
+}
 
         function renderUsers(users) {
             const tbody = document.getElementById('userTableBody');
