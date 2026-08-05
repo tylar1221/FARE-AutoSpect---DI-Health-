@@ -14,7 +14,8 @@ from pathlib import Path
 from typing import Optional, Tuple
 import sys
 import boto3
-from google import genai
+import google.generativeai as genai
+
 from google.genai import types
 
 from app.config import settings

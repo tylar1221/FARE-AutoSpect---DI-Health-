@@ -58,7 +58,6 @@ app = FastAPI(
 # In main.py - add after app creation
 
 import asyncio
-import schedule
 import threading
 import time
 from services.transcribe_service import run_health_transcribe_cycle
