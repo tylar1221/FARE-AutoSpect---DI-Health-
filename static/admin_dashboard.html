@@ -787,55 +787,84 @@
         }
 
         function updateInvestigators(cases, users) {
-            const container = document.getElementById('investigatorList');
-            const investigators = users.filter(u => u.role === 'investigator');
+    const container = document.getElementById('investigatorList');
+    const investigators = users.filter(u => u.role === 'investigator');
+    
+    // Update count
+    document.getElementById('investigatorCount').textContent = `${investigators.length} investigators`;
 
-            if (investigators.length === 0) {
-                container.innerHTML = `
-                    <div style="text-align: center; padding: 30px; color: var(--ink-muted);">
-                        <i class="bi bi-person" style="font-size: 2rem; display: block; margin-bottom: 8px;"></i>
-                        No investigators found
-                    </div>
-                `;
-                return;
-            }
+    if (investigators.length === 0) {
+        container.innerHTML = `
+            <div style="text-align: center; padding: 30px; color: var(--ink-muted);">
+                <i class="bi bi-person" style="font-size: 2rem; display: block; margin-bottom: 8px;"></i>
+                No investigators found
+            </div>
+        `;
+        return;
+    }
 
-            container.innerHTML = investigators.map(inv => {
-                // Get cases for this investigator
-                const userCases = cases.filter(c => c.user_id === inv.id);
-                const total = userCases.length;
-                const pending = userCases.filter(c => c.status === 'pending').length;
-                const completed = userCases.filter(c => c.status === 'completed').length;
-                const scheduled = userCases.filter(c => c.status === 'scheduled').length;
+    // Debug: Log what we're comparing
+    console.log('🔍 Investigators:', investigators.map(i => ({id: i.id, type: typeof i.id, username: i.username})));
+    console.log('🔍 Cases with user_id:', cases.filter(c => c.user_id).map(c => ({user_id: c.user_id, type: typeof c.user_id, case_id: c.case_id})));
 
-                const completionRate = total > 0 ? Math.round((completed / total) * 100) : 0;
-                
-                // Determine color based on completion rate
-                let colorClass = 'fill-amber';
-                if (completionRate >= 70) colorClass = 'fill-green';
-                else if (completionRate >= 40) colorClass = 'fill-blue';
+    // Also show cases without an investigator
+    const unassignedCases = cases.filter(c => !c.user_id);
+    let unassignedHtml = '';
+    if (unassignedCases.length > 0) {
+        unassignedHtml = `
+            <div class="investigator-item" style="background: var(--amber-dim); padding: 8px 12px; border-radius: 8px; margin-bottom: 8px;">
+                <div class="investigator-name">
+                    <i class="bi bi-exclamation-triangle" style="color: var(--amber);"></i>
+                    Unassigned Cases
+                    <span class="badge" style="background: var(--amber-dim); color: var(--amber);">${unassignedCases.length} cases</span>
+                </div>
+                <div class="investigator-stats">
+                    <span>⚠️ Needs assignment</span>
+                </div>
+            </div>
+            <div style="font-size: 0.7rem; color: var(--ink-muted); margin-bottom: 12px; padding: 4px 12px;">
+                These cases need to be assigned to an investigator
+            </div>
+        `;
+    }
 
-                return `
-                    <div class="investigator-item">
-                        <div class="investigator-name">
-                            <i class="bi bi-person-circle" style="color: var(--blue);"></i>
-                            ${inv.username}
-                            <span class="badge">${total} cases</span>
-                        </div>
-                        <div class="investigator-stats">
-                            <span>📋 ${pending} pending</span>
-                            <span>📅 ${scheduled} scheduled</span>
-                            <span>✅ ${completed} completed</span>
-                            <span>📊 ${completionRate}% done</span>
-                        </div>
-                    </div>
-                    <div class="progress-bar">
-                        <div class="fill ${colorClass}" style="width: ${completionRate}%;"></div>
-                    </div>
-                `;
-            }).join('');
-        }
+    const investigatorsHtml = investigators.map(inv => {
+        // 🔥 FIX: Convert both to strings for comparison to handle type mismatches
+        const userCases = cases.filter(c => String(c.user_id) === String(inv.id));
+        
+        const total = userCases.length;
+        const pending = userCases.filter(c => c.status === 'pending').length;
+        const completed = userCases.filter(c => c.status === 'completed').length;
+        const scheduled = userCases.filter(c => c.status === 'scheduled').length;
 
+        const completionRate = total > 0 ? Math.round((completed / total) * 100) : 0;
+        
+        let colorClass = 'fill-amber';
+        if (completionRate >= 70) colorClass = 'fill-green';
+        else if (completionRate >= 40) colorClass = 'fill-blue';
+
+        return `
+            <div class="investigator-item">
+                <div class="investigator-name">
+                    <i class="bi bi-person-circle" style="color: var(--blue);"></i>
+                    ${inv.username}
+                    <span class="badge">${total} cases</span>
+                </div>
+                <div class="investigator-stats">
+                    <span>📋 ${pending} pending</span>
+                    <span>📅 ${scheduled} scheduled</span>
+                    <span>✅ ${completed} completed</span>
+                    <span>📊 ${completionRate}% done</span>
+                </div>
+            </div>
+            <div class="progress-bar">
+                <div class="fill ${colorClass}" style="width: ${completionRate}%;"></div>
+            </div>
+        `;
+    }).join('');
+
+    container.innerHTML = unassignedHtml + investigatorsHtml;
+}
         function updateStatusBreakdown(cases) {
             const container = document.getElementById('statusBreakdown');
             const total = cases.length;
