@@ -123,7 +123,7 @@ async def update_case_notes(
 def generate_case_id() -> str:
     date_str = datetime.now().strftime("%d%m%y")
     random_suffix = str(uuid.uuid4())[:4].upper()
-    return f"ICS-{date_str}-{random_suffix}"
+    return f"H-ICS-{date_str}-{random_suffix}"
 # ============ FACE VERIFICATION ============
 @router.post("/{case_id}/verify-face")
 async def verify_face(
