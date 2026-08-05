@@ -902,10 +902,8 @@
         // ============================================================
         // CONFIGURATION
         // ============================================================
-        const API_BASE = window.location.origin;
         let authToken = localStorage.getItem('auth_token');
         let currentUser = null;
-
         // ============================================================
         // UTILITY FUNCTIONS
         // ============================================================
@@ -927,21 +925,21 @@
         }
 
         async function apiRequest(endpoint, method = 'GET', body = null) {
-            const options = {
-                method,
-                headers: getHeaders()
-            };
-            if (body) {
-                options.body = JSON.stringify(body);
-            }
+    const options = {
+        method,
+        headers: getHeaders()
+    };
+    if (body) {
+        options.body = JSON.stringify(body);
+    }
 
-            const response = await fetch(`${API_BASE}${endpoint}`, options);
-            if (!response.ok) {
-                const error = await response.json();
-                throw new Error(error.detail || 'Request failed');
-            }
-            return await response.json();
-        }
+    const response = await fetch(endpoint, options);
+    if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.detail || 'Request failed');
+    }
+    return await response.json();
+}
 
         // ============================================================
         // PASSWORD VISIBILITY TOGGLE
@@ -962,43 +960,29 @@
         // AUTH FUNCTIONS
         // ============================================================
         async function checkAuth() {
-            if (!authToken) {
-                window.location.href = '/static/login.html';
-                return false;
-            }
+    const userStr = localStorage.getItem('user');
 
-            try {
-                const response = await fetch(`${API_BASE}/api/auth/verify`, {
-                    headers: getHeaders()
-                });
-                if (!response.ok) {
-                    localStorage.removeItem('auth_token');
-                    localStorage.removeItem('user');
-                    window.location.href = '/static/login.html';
-                    return false;
-                }
-                const data = await response.json();
-                currentUser = data.user;
-                document.getElementById('currentUsername').textContent = currentUser.username;
-                document.getElementById('currentRole').textContent = currentUser.role;
-                document.getElementById('userAvatar').textContent = currentUser.username.charAt(0).toUpperCase();
+    if (!authToken || !userStr) {
+        window.location.href = '/static/login.html';
+        return false;
+    }
 
-                if (currentUser.role !== 'administrator') {
-                    showAlert('listAlert', '⚠️ You need admin privileges to manage users.', 'error');
-                }
-                return true;
-            } catch (error) {
-                console.error('Auth check failed:', error);
-                window.location.href = '/static/login.html';
-                return false;
-            }
+    try {
+        currentUser = JSON.parse(userStr);
+        document.getElementById('currentUsername').textContent = currentUser.username;
+        document.getElementById('currentRole').textContent = currentUser.role;
+        document.getElementById('userAvatar').textContent = currentUser.username.charAt(0).toUpperCase();
+
+        if (currentUser.role !== 'administrator') {
+            window.location.href = '/static/case_detail.html';
+            return false;
         }
-
-        function logout() {
-            localStorage.removeItem('auth_token');
-            localStorage.removeItem('user');
-            window.location.href = '/static/login.html';
-        }
+        return true;
+    } catch (e) {
+        window.location.href = '/static/login.html';
+        return false;
+    }
+}
 
         // ============================================================
         // USER MANAGEMENT FUNCTIONS
