@@ -161,7 +161,7 @@
       text-decoration: line-through; opacity: 0.6;
     }
     .slot-grid {
-      display: grid; grid-template-columns: repeat(auto-fill, minmax(90px, 1fr));
+      display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
       gap: 8px; padding: 16px 20px;
     }
     /* ========== BOOK NOW BUTTON ========== */
@@ -1189,9 +1189,9 @@ allCases.forEach(c => {
           <div class="slot-grid">
             ${data.slots.map(s => {
               if (s.is_available) {
-                return `<button class="slot-btn" onclick="bookSpecificSlot('${dateStr}', '${s.start}')">${s.start}</button>`;
+                return `<button class="slot-btn" onclick="bookSpecificSlot('${dateStr}', '${s.start}')">${s.start} - ${s.end}</button>`;
               } else {
-                return `<button class="slot-btn taken" disabled title="${s.booked_by || 'Booked'}">${s.start}</button>`;
+                return `<button class="slot-btn taken" disabled title="${s.booked_by || 'Booked'}">${s.start} - ${s.end}</button>`;
               }
             }).join('')}
           </div>
