@@ -114,29 +114,42 @@ class CalendarService:
             return []
     
     async def create_meeting_event(
-        self,
-        case_name: str,
-        case_id: str,
-        date: date,
-        start_time: time,
-        end_time: time,
-        phone_number: str
-    ) -> Tuple[str, str]:
-        """Create event in YOUR NEW calendar with Google Meet"""
+    self,
+    case_name: str,
+    case_id: str,
+    date: date,
+    start_time: time,
+    end_time: time,
+    phone_number: str
+) -> Tuple[str, str, str, str]:
+        """
+        Create event in calendar with Google Meet
+        Returns: (event_id, meet_link, meeting_rec_id, calendar_event_summary)
+        """
         if not self.service:
             print("❌ Calendar service not authenticated")
-            return None, None
+            return None, None, None, None
         
         start_dt = datetime.combine(date, start_time).replace(tzinfo=IST)
         end_dt = datetime.combine(date, end_time).replace(tzinfo=IST)
         
+        # Format case_id to match health pattern: H-ICS-260425-DB660
+        # Ensure case_id is in proper format
+        formatted_case_id = case_id
+        if not case_id.startswith("H-"):
+            formatted_case_id = f"H-{case_id}" if not case_id.startswith("ICS-") else case_id
+        
+        # Create event summary matching health system format
+        event_summary = f"Case ({formatted_case_id})"
+        
         event = {
-            "summary": f"Consultation - {case_name}",
+            "summary": event_summary,
             "description": (
-                f"Case ID: {case_id}\n"
+                f"Case ID: {formatted_case_id}\n"
                 f"Patient: {case_name}\n"
                 f"Phone: {phone_number}\n"
-                f"Scheduled via FARE AutoSpect"
+                f"Scheduled via FARE AutoSpect\n"
+                f"Health Recording: (H-{formatted_case_id})" if formatted_case_id.startswith("H-") else f"Health Recording: ({formatted_case_id})"
             ),
             "start": {
                 "dateTime": start_dt.isoformat(),
@@ -148,7 +161,7 @@ class CalendarService:
             },
             "conferenceData": {
                 "createRequest": {
-                    "requestId": f"meet-{case_id}-{datetime.now(IST).strftime('%Y%m%d%H%M%S')}",
+                    "requestId": f"meet-{formatted_case_id}-{datetime.now(IST).strftime('%Y%m%d%H%M%S')}",
                     "conferenceSolutionKey": {"type": "hangoutsMeet"},
                 }
             },
@@ -169,14 +182,24 @@ class CalendarService:
             
             event_id = created.get("id")
             
-            print(f"✅ Created event in YOUR NEW calendar: {event_id}")
-            print(f"📹 Meet link: {meet_link}")
+            # Extract meeting record ID from meet link
+            meeting_rec_id = None
+            if meet_link:
+                import re
+                m = re.search(r'meet\.google\.com/([a-z-]+)', meet_link)
+                if m:
+                    meeting_rec_id = m.group(1)
             
-            return event_id, meet_link
+            print(f"✅ Created event in calendar: {event_id}")
+            print(f"📹 Meet link: {meet_link}")
+            print(f"🔑 Meeting record ID: {meeting_rec_id}")
+            print(f"📋 Event summary: {event_summary}")
+            
+            return event_id, meet_link, meeting_rec_id, event_summary
             
         except Exception as e:
             print(f"❌ Failed to create calendar event: {e}")
-            return None, None
+            return None, None, None, None
     
     async def get_available_slots_with_metadata(
         self,
