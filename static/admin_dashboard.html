@@ -238,7 +238,6 @@
             margin-bottom: 32px;
         }
 
-        /* Stats Grid */
         .stats-grid {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
@@ -294,7 +293,6 @@
             color: var(--red);
         }
 
-        /* Charts / Cards */
         .dashboard-grid {
             display: grid;
             grid-template-columns: 1fr 1fr;
@@ -340,7 +338,6 @@
             border-radius: 10px;
         }
 
-        /* Investigator List */
         .investigator-item {
             display: flex;
             justify-content: space-between;
@@ -409,7 +406,6 @@
             background: var(--red);
         }
 
-        /* Status Breakdown */
         .status-breakdown {
             display: flex;
             flex-direction: column;
@@ -449,7 +445,6 @@
             text-align: right;
         }
 
-        /* Recent Activity */
         .activity-item {
             padding: 10px 0;
             border-bottom: 1px solid var(--border);
@@ -505,12 +500,10 @@
             color: var(--ink-muted);
         }
 
-        /* Full width card */
         .full-width {
             grid-column: 1 / -1;
         }
 
-        /* Toast */
         .toast {
             position: fixed;
             bottom: 24px;
@@ -615,7 +608,6 @@
             Overview of all investigators, cases, and system activity
         </div>
 
-        <!-- Stats Grid -->
         <div class="stats-grid" id="statsGrid">
             <div class="stat-card purple">
                 <div class="stat-icon"><i class="bi bi-people"></i></div>
@@ -644,9 +636,7 @@
             </div>
         </div>
 
-        <!-- Dashboard Grid -->
         <div class="dashboard-grid">
-            <!-- Investigator Performance -->
             <div class="card">
                 <div class="card-header">
                     <i class="bi bi-person-badge" style="color: var(--purple);"></i> Investigator Performance
@@ -659,7 +649,6 @@
                 </div>
             </div>
 
-            <!-- Status Breakdown -->
             <div class="card">
                 <div class="card-header">
                     <i class="bi bi-pie-chart" style="color: var(--blue);"></i> Case Status Breakdown
@@ -674,7 +663,6 @@
                 </div>
             </div>
 
-            <!-- Recent Activity -->
             <div class="card full-width">
                 <div class="card-header">
                     <i class="bi bi-clock-history" style="color: var(--amber);"></i> Recent Activity
@@ -701,7 +689,6 @@
         let currentUser = null;
         try {
             currentUser = JSON.parse(userStr);
-            // Only admins can access this page
             if (currentUser.role !== 'administrator') {
                 window.location.href = '/static/case_detail.html';
             }
@@ -743,16 +730,28 @@
         // ============ LOAD DASHBOARD DATA ============
         async function loadDashboard() {
             try {
-                // Get all cases (admin endpoint)
-                const casesResponse = await fetch('/api/cases/admin/all-cases', { headers: getHeaders() });
-                if (!casesResponse.ok) throw new Error('Failed to load cases');
+                // Get all cases from admin endpoint
+                const casesResponse = await fetch('/api/cases/admin/all-cases', { 
+                    headers: getHeaders() 
+                });
+                
+                if (!casesResponse.ok) {
+                    throw new Error('Failed to load cases');
+                }
                 const allCases = await casesResponse.json();
+                console.log('📊 Loaded cases:', allCases.length);
 
                 // Get all users
-                const usersResponse = await fetch('/api/auth/users', { headers: getHeaders() });
-                if (!usersResponse.ok) throw new Error('Failed to load users');
+                const usersResponse = await fetch('/api/auth/users', { 
+                    headers: getHeaders() 
+                });
+                
+                if (!usersResponse.ok) {
+                    throw new Error('Failed to load users');
+                }
                 const usersData = await usersResponse.json();
                 const allUsers = usersData.users || [];
+                console.log('👥 Loaded users:', allUsers.length);
 
                 // Update stats
                 updateStats(allCases, allUsers);
@@ -767,7 +766,7 @@
                 updateRecentActivity(allCases);
 
             } catch (error) {
-                console.error('Error loading dashboard:', error);
+                console.error('❌ Error loading dashboard:', error);
                 showToast('Error loading dashboard data', 'error');
             }
         }
@@ -779,6 +778,7 @@
             const completed = cases.filter(c => c.status === 'completed').length;
             const nonWorkable = cases.filter(c => c.status === 'non_workable' || c.status === 'failed').length;
 
+            // Update the DOM with real data
             document.getElementById('totalUsers').textContent = investigators.length;
             document.getElementById('totalCases').textContent = total;
             document.getElementById('pendingCases').textContent = pending;
@@ -801,6 +801,7 @@
             }
 
             container.innerHTML = investigators.map(inv => {
+                // Get cases for this investigator
                 const userCases = cases.filter(c => c.user_id === inv.id);
                 const total = userCases.length;
                 const pending = userCases.filter(c => c.status === 'pending').length;
@@ -808,6 +809,11 @@
                 const scheduled = userCases.filter(c => c.status === 'scheduled').length;
 
                 const completionRate = total > 0 ? Math.round((completed / total) * 100) : 0;
+                
+                // Determine color based on completion rate
+                let colorClass = 'fill-amber';
+                if (completionRate >= 70) colorClass = 'fill-green';
+                else if (completionRate >= 40) colorClass = 'fill-blue';
 
                 return `
                     <div class="investigator-item">
@@ -824,7 +830,7 @@
                         </div>
                     </div>
                     <div class="progress-bar">
-                        <div class="fill fill-${completionRate >= 70 ? 'green' : completionRate >= 40 ? 'blue' : 'amber'}" style="width: ${completionRate}%;"></div>
+                        <div class="fill ${colorClass}" style="width: ${completionRate}%;"></div>
                     </div>
                 `;
             }).join('');
@@ -846,22 +852,16 @@
 
             const statuses = ['pending', 'scheduled', 'completed', 'non_workable'];
             const labels = {
-                'pending': 'Pending',
-                'scheduled': 'Scheduled',
-                'completed': 'Completed',
-                'non_workable': 'Non-Workable'
+                'pending': '⏳ Pending',
+                'scheduled': '📅 Scheduled',
+                'completed': '✅ Completed',
+                'non_workable': '🚫 Non-Workable'
             };
             const colors = {
                 'pending': 'fill-amber',
                 'scheduled': 'fill-blue',
                 'completed': 'fill-green',
                 'non_workable': 'fill-red'
-            };
-            const icons = {
-                'pending': '⏳',
-                'scheduled': '📅',
-                'completed': '✅',
-                'non_workable': '🚫'
             };
 
             container.innerHTML = statuses.map(status => {
@@ -870,7 +870,7 @@
 
                 return `
                     <div class="status-row">
-                        <span class="label">${icons[status]} ${labels[status]}</span>
+                        <span class="label">${labels[status]}</span>
                         <div class="bar-track">
                             <div class="bar-fill ${colors[status]}" style="width: ${percentage}%;"></div>
                         </div>
@@ -898,7 +898,7 @@
                 new Date(b.created_at) - new Date(a.created_at)
             ).slice(0, 10);
 
-            const icons = {
+            const statusIcons = {
                 'pending': '⏳',
                 'scheduled': '📅',
                 'completed': '✅',
@@ -908,7 +908,7 @@
             container.innerHTML = sorted.map(c => {
                 const date = new Date(c.created_at);
                 const timeAgo = getTimeAgo(date);
-                const icon = icons[c.status] || '📋';
+                const icon = statusIcons[c.status] || '📋';
 
                 return `
                     <div class="activity-item">
@@ -941,7 +941,14 @@
             return `${days}d ago`;
         }
 
-        // ============ REFRESH ============
+        // ============ AUTO REFRESH ============
+        // Load data immediately
+        loadDashboard();
+        
+        // Refresh every 30 seconds
+        setInterval(loadDashboard, 30000);
+
+        // Refresh on Ctrl+R
         document.addEventListener('keydown', function(e) {
             if (e.ctrlKey && e.key === 'r') {
                 e.preventDefault();
@@ -949,10 +956,6 @@
                 showToast('🔄 Dashboard refreshed', 'info');
             }
         });
-
-        // ============ INITIALIZE ============
-        loadDashboard();
-        setInterval(loadDashboard, 60000); // Refresh every minute
     </script>
 
 </body>
