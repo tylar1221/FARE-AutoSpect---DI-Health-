@@ -800,12 +800,49 @@
         return;
     }
 
-    // Debug: Log what we're comparing
-    console.log('🔍 Investigators:', investigators.map(i => ({id: i.id, type: typeof i.id, username: i.username})));
-    console.log('🔍 Cases with user_id:', cases.filter(c => c.user_id).map(c => ({user_id: c.user_id, type: typeof c.user_id, case_id: c.case_id})));
+    // Debug: Log the data structure
+    console.log('📊 All cases with user_id:', cases.map(c => ({
+        case_id: c.case_id,
+        user_id: c.user_id,
+        name: c.name,
+        status: c.status
+    })));
+    
+    console.log('👤 All investigators:', investigators.map(i => ({
+        id: i.id,
+        username: i.username,
+        role: i.role
+    })));
 
-    // Also show cases without an investigator
-    const unassignedCases = cases.filter(c => !c.user_id || c.user_id === '' || c.user_id === null);
+    // Build a map of investigator IDs to usernames for quick lookup
+    const investigatorMap = {};
+    investigators.forEach(inv => {
+        // Store by multiple possible ID formats
+        if (inv.id) investigatorMap[String(inv.id)] = inv.username;
+        if (inv._id) investigatorMap[String(inv._id)] = inv.username;
+        if (inv.userId) investigatorMap[String(inv.userId)] = inv.username;
+        // Also store by username itself
+        investigatorMap[inv.username] = inv.username;
+    });
+    
+    console.log('🗺️ Investigator Map:', investigatorMap);
+
+    // Find which cases have user_id that matches an investigator
+    const matchedCases = cases.filter(c => {
+        if (!c.user_id) return false;
+        const userIdStr = String(c.user_id);
+        return investigatorMap[userIdStr] !== undefined;
+    });
+    
+    console.log(`✅ Matched ${matchedCases.length} cases to investigators`);
+
+    // Also show cases without an investigator (unassigned)
+    const unassignedCases = cases.filter(c => {
+        if (!c.user_id) return true;
+        const userIdStr = String(c.user_id);
+        return investigatorMap[userIdStr] === undefined;
+    });
+    
     let unassignedHtml = '';
     if (unassignedCases.length > 0) {
         unassignedHtml = `
@@ -826,13 +863,15 @@
     }
 
     const investigatorsHtml = investigators.map(inv => {
-        // 🔥 FIX: Convert both to strings for comparison to handle type mismatches
-        // Also handle cases where user_id might be stored as number or string
+        // MATCH CASES BY USER_ID (the user who created/owns the case)
         const userCases = cases.filter(c => {
             if (!c.user_id) return false;
-            return String(c.user_id) === String(inv.id) || 
-                   String(c.user_id) === String(inv._id) ||
-                   String(c.user_id) === inv.username;
+            // Try matching by ID in multiple formats
+            const userIdStr = String(c.user_id);
+            return userIdStr === String(inv.id) || 
+                   userIdStr === String(inv._id) ||
+                   userIdStr === String(inv.userId) ||
+                   userIdStr === inv.username;
         });
         
         const total = userCases.length;
@@ -840,6 +879,7 @@
         const completed = userCases.filter(c => c.status === 'completed').length;
         const scheduled = userCases.filter(c => c.status === 'scheduled').length;
         const nonWorkable = userCases.filter(c => c.status === 'non_workable' || c.status === 'failed').length;
+        const workable = userCases.filter(c => c.status !== 'non_workable' && c.status !== 'failed').length;
 
         const completionRate = total > 0 ? Math.round((completed / total) * 100) : 0;
         
@@ -847,9 +887,12 @@
         if (completionRate >= 70) colorClass = 'fill-green';
         else if (completionRate >= 40) colorClass = 'fill-blue';
 
-        // Show case details for debugging
+        // Log each investigator's cases
         if (userCases.length > 0) {
-            console.log(`📋 ${inv.username} has ${userCases.length} cases:`, userCases.map(c => c.case_id));
+            console.log(`📋 ${inv.username} (ID: ${inv.id}) has ${userCases.length} cases:`, 
+                userCases.map(c => `${c.case_id} (${c.status})`).join(', '));
+        } else {
+            console.log(`📋 ${inv.username} has 0 cases`);
         }
 
         return `
