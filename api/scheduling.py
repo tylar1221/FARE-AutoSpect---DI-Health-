@@ -171,14 +171,14 @@ async def book_meeting(
         start_naive = make_timezone_naive(start_time)
         end_naive = make_timezone_naive(end_time)
         
-        event_id, meet_link = await calendar.create_meeting_event(
+        event_id, meet_link, meeting_rec_id, event_summary = await calendar.create_meeting_event(
             case_name=case.name,
             case_id=case.case_id,
             date=slot_date,
             start_time=start_naive.time(),
             end_time=end_naive.time(),
             phone_number=case.phone_number
-        )
+)
         
         if not event_id or not meet_link:
             raise HTTPException(500, "Failed to create calendar event")

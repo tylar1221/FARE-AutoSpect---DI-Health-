@@ -274,7 +274,7 @@ async def handle_yes_response(case_id: str, from_number: str):
         slot_datetime = IST.localize(slot_datetime)
         end_datetime = slot_datetime + timedelta(minutes=30)
         
-        event_id, meet_link = await calendar.create_meeting_event(
+        event_id, meet_link , meeting_rec_id, event_summary = await calendar.create_meeting_event(
             case_name=case.name,
             case_id=case.case_id,
             date=slot.slot_date,
