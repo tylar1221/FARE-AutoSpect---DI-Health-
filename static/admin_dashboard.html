@@ -791,7 +791,6 @@
     const investigators = users.filter(u => u.role === 'investigator');
     
     // Update count
-    document.getElementById('investigatorCount').textContent = `${investigators.length} investigators`;
 
     if (investigators.length === 0) {
         container.innerHTML = `
