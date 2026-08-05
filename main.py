@@ -33,7 +33,12 @@ async def lifespan(app: FastAPI):
     # Initialize database (creates tables if they don't exist)
     await init_db()
     print("Database initialized")
-    
+    if not os.environ.get('HEALTH_SCHEDULER_STARTED'):
+        os.environ['HEALTH_SCHEDULER_STARTED'] = 'true'
+        asyncio.create_task(health_scheduler_loop())
+        print("✅ Health transcription scheduler started (every 5 min)")
+
+
     # Create uploads directory for file storage
     uploads_dir = "uploads"
     if not os.path.exists(uploads_dir):
@@ -57,39 +62,25 @@ app = FastAPI(
 )
 # In main.py - add after app creation
 
+
 import asyncio
-import threading
-import time
 from services.transcribe_service import run_health_transcribe_cycle
 from services.google_drive_service import GoogleDriveService
 
-def run_health_scheduler():
-    """Run health transcription every 5 minutes"""
-    loop = asyncio.new_event_loop()
-    asyncio.set_event_loop(loop)
-    
-    drive_service = GoogleDriveService()
+async def health_scheduler_loop():
+    """Run health transcription every 5 minutes, on the app's own event loop"""
+    drive_service = await asyncio.to_thread(GoogleDriveService)
     if not drive_service.service:
         print("❌ Drive service not available for scheduler")
         return
-    
+
     while True:
         try:
             print("🕐 Running health transcription...")
-            loop.run_until_complete(
-                run_health_transcribe_cycle(drive_service.service)
-            )
+            await run_health_transcribe_cycle(drive_service.service)
         except Exception as e:
             print(f"❌ Scheduler error: {e}")
-        time.sleep(300)  # 5 minutes
-
-
-# Start scheduler thread
-if not os.environ.get('HEALTH_SCHEDULER_STARTED'):
-    os.environ['HEALTH_SCHEDULER_STARTED'] = 'true'
-    scheduler_thread = threading.Thread(target=run_health_scheduler, daemon=True)
-    scheduler_thread.start()
-    print("✅ Health transcription scheduler started (every 5 min)")
+        await asyncio.sleep(300)  # 5 minutes
 # CORS
 app.add_middleware(
     CORSMiddleware,
