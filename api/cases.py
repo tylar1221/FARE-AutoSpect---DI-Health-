@@ -70,6 +70,7 @@ class CaseResponse(BaseModel):
     notes: Optional[str]
     transcript: Optional[str]
     created_at: datetime
+    user_id: Optional[int]  # ✅ ADD THIS LINE
     
     class Config:
         from_attributes = True
