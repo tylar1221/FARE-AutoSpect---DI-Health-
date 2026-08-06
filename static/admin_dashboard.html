@@ -671,7 +671,7 @@
             </div>
             <div class="stat-card red">
                 <div class="stat-icon"><i class="bi bi-exclamation-triangle"></i></div>
-                <div class="stat-number" id="nonWorkableCases">0</div>
+                <div class="stat-number" id="non_cooperationCases">0</div>
                 <div class="stat-label">Non-Workable</div>
             </div>
         </div>
@@ -816,14 +816,14 @@
             const total = cases.length;
             const pending = cases.filter(c => c.status === 'pending').length;
             const completed = cases.filter(c => c.status === 'completed').length;
-            const nonWorkable = cases.filter(c => c.status === 'non_workable' || c.status === 'failed').length;
+            const non_cooperation = cases.filter(c => c.status === 'non_cooperation' || c.status === 'failed').length;
 
             // Update the DOM with real data
             document.getElementById('totalUsers').textContent = investigators.length;
             document.getElementById('totalCases').textContent = total;
             document.getElementById('pendingCases').textContent = pending;
             document.getElementById('completedCases').textContent = completed;
-            document.getElementById('nonWorkableCases').textContent = nonWorkable;
+            document.getElementById('non_cooperationCases').textContent = non_cooperation;
         }
 
         function updateInvestigators(cases, users) {
@@ -906,7 +906,7 @@
         const pending = userCases.filter(c => c.status === 'pending').length;
         const completed = userCases.filter(c => c.status === 'completed').length;
         const scheduled = userCases.filter(c => c.status === 'scheduled').length;
-        const nonWorkable = userCases.filter(c => c.status === 'non_workable' || c.status === 'failed').length;
+        const non_cooperation = userCases.filter(c => c.status === 'non_cooperation' || c.status === 'failed').length;
 
         const completionRate = total > 0 ? Math.round((completed / total) * 100) : 0;
         
@@ -959,7 +959,7 @@
                         <span>📋 ${pending} pending</span>
                         <span>📅 ${scheduled} scheduled</span>
                         <span>✅ ${completed} completed</span>
-                        <span>🚫 ${nonWorkable} non-workable</span>
+                        <span>🚫 ${non_cooperation} non-workable</span>
                         <span>📊 ${completionRate}% done</span>
                     </div>
                 </div>
@@ -1004,18 +1004,18 @@ function toggleCasesDropdown(element) {
                 return;
             }
 
-            const statuses = ['pending', 'scheduled', 'completed', 'non_workable'];
+            const statuses = ['pending', 'scheduled', 'completed', 'non_cooperation'];
             const labels = {
                 'pending': '⏳ Pending',
                 'scheduled': '📅 Scheduled',
                 'completed': '✅ Completed',
-                'non_workable': '🚫 Non-Workable'
+                'non_cooperation': '🚫 Non-Workable'
             };
             const colors = {
                 'pending': 'fill-amber',
                 'scheduled': 'fill-blue',
                 'completed': 'fill-green',
-                'non_workable': 'fill-red'
+                'non_cooperation': 'fill-red'
             };
 
             container.innerHTML = statuses.map(status => {
@@ -1056,7 +1056,7 @@ function toggleCasesDropdown(element) {
                 'pending': '⏳',
                 'scheduled': '📅',
                 'completed': '✅',
-                'non_workable': '🚫'
+                'non_cooperation': '🚫'
             };
 
             container.innerHTML = sorted.map(c => {
