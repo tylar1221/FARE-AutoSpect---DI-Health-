@@ -148,7 +148,7 @@ async def get_pending_health_groups(db, limit: int = 1):
             WHERE hpg.status IN ('pending', 'failed')
             AND COALESCE(hpg.retry_count, 0) < {MAX_RETRIES}
             AND hpg.last_seen < NOW() - INTERVAL '{GRACE_PERIOD_MINUTES} minutes'
-            GROUP BY hpg.case_id, hpg.status, hpg.retry_count, hpg.video_count
+            GROUP BY hpg.case_id, hpg.status, hpg.retry_count, hpg.video_count, hpg.first_seen
             ORDER BY hpg.first_seen ASC
             LIMIT :limit
         """),
