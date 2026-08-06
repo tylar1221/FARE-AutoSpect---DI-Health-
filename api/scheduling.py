@@ -468,8 +468,7 @@ async def get_user_calendar_info(
     user_calendar_id = user_result.scalar_one_or_none()
     
     # Initialize calendar service
-    calendar = CalendarService(user_id=current_user.id)
-    
+    calendar = await CalendarService.create(user_id=current_user.id)    
     calendar_name = "FARE AutoSpect - DI Health"
     if calendar.service:
         try:

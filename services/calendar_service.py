@@ -16,82 +16,38 @@ IST = timezone(timedelta(hours=5, minutes=30))
 class CalendarService:
     """Google Calendar Service - Supports per-user calendars"""
     
-    def __init__(self, user_id: Optional[int] = None):
+    def __init__(self, user_id: Optional[int] = None, calendar_id: Optional[str] = None):
         """
-        Initialize with optional user_id.
-        If user_id provided, fetches their calendar_id from database.
+        Purely synchronous constructor — never touches the database.
+        Pass calendar_id directly if known, otherwise use
+        `await CalendarService.create(user_id)` instead of this constructor.
         """
         self.service = None
         self.user_id = user_id
-        self._calendar_id = None
         self.calendar_name = "FARE AutoSpect - DI Health"
         
-        # Default fallback calendar
         self.default_calendar_id = os.getenv(
             "GOOGLE_CALENDAR_ID", 
             "c_deb63eb357ea9d479747664c03531500f234ef7485bc09f24fe2581a3134c508@group.calendar.google.com"
         )
         
-        self.authenticate()
+        self._calendar_id = calendar_id.strip() if calendar_id else self.default_calendar_id
         
-        # If user_id provided, load their calendar
-        if user_id:
-            self._load_user_calendar(user_id)
-    
-    def _load_user_calendar(self, user_id: int):
-        """Fetch user's calendar_id from database"""
-        try:
-            from sqlalchemy import select
-            from app.database import AsyncSessionLocal
-            from app.models import User
-            import asyncio
-            import concurrent.futures
-            
-            async def fetch_calendar_id():
-                async with AsyncSessionLocal() as session:
-                    result = await session.execute(
-                        select(User.calendar_id).where(User.id == user_id)
-                    )
-                    calendar_id = result.scalar_one_or_none()
-                    print(f"🔍 DEBUG: Found calendar_id in DB for user {user_id}: {calendar_id}")
-                    return calendar_id
-            
-            # ✅ FIX: Check if we're in a running event loop
-            try:
-                loop = asyncio.get_running_loop()
-                print(f"🔄 Running in async context, using ThreadPoolExecutor")
-                
-                # Create a new event loop in a separate thread
-                def sync_fetch():
-                    new_loop = asyncio.new_event_loop()
-                    asyncio.set_event_loop(new_loop)
-                    try:
-                        return new_loop.run_until_complete(fetch_calendar_id())
-                    finally:
-                        new_loop.close()
-                
-                with concurrent.futures.ThreadPoolExecutor(max_workers=1) as executor:
-                    future = executor.submit(sync_fetch)
-                    calendar_id = future.result(timeout=10)
-                    
-            except RuntimeError:
-                # No running event loop - safe to use asyncio.run()
-                print(f"🔄 Running in sync context, using asyncio.run()")
-                calendar_id = asyncio.run(fetch_calendar_id())
-            
-            if calendar_id:
-                self._calendar_id = calendar_id
-                print(f"✅ Using user-specific calendar: {self._calendar_id}")
-            else:
-                self._calendar_id = self.default_calendar_id
-                print(f"⚠️ No calendar_id for user {user_id}, using default")
-                
-        except Exception as e:
-            print(f"⚠️ Error loading user calendar: {e}")
-            import traceback
-            traceback.print_exc()
-            self._calendar_id = self.default_calendar_id
+        self.authenticate()
 
+    @classmethod
+    async def create(cls, user_id: Optional[int] = None) -> "CalendarService":
+        """Async factory — awaits the DB lookup before constructing the service."""
+        calendar_id = None
+        if user_id:
+            calendar_id = await cls.get_user_calendar_id(user_id)
+            if calendar_id:
+                print(f"✅ Using user-specific calendar: {calendar_id}")
+            else:
+                print(f"⚠️ No calendar_id found for user {user_id}, using default calendar.")
+        return cls(user_id=user_id, calendar_id=calendar_id)
+    
+    
 
     @property
     def calendar_id(self) -> str:
