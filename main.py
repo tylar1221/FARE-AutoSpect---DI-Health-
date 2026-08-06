@@ -80,7 +80,7 @@ async def health_scheduler_loop():
             await run_health_transcribe_cycle(drive_service.service)
         except Exception as e:
             print(f"❌ Scheduler error: {e}")
-        await asyncio.sleep(300)  # 5 minutes
+        await asyncio.sleep(30)  # 5 minutes
 # CORS
 app.add_middleware(
     CORSMiddleware,

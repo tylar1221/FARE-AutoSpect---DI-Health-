@@ -45,7 +45,7 @@ MODEL_NAME = "gemini-2.5-flash"
 HEALTH_PATTERN = r"\(H-([A-Z]{2,}-\d{4,}-[A-Z0-9]+)\)"
 INSURANCE_PATTERN = r"\(([A-Z]{2,}-\d{4,}-[A-Z0-9]+)\)"  # To skip
 
-GRACE_PERIOD_MINUTES = 5   # let multi-part recordings finish landing before merging
+GRACE_PERIOD_MINUTES = 0.2      # let multi-part recordings finish landing before merging
 MAX_RETRIES = 3
 
 
@@ -212,16 +212,32 @@ async def health_sync_drive_to_db(drive_service):
     logger.info("🏥 Health Drive sync starting... (HEALTH ONLY)")
 
     try:
+        # Step 1: Find root folder — renamed from "Meet Recordings" to "Google Meet"
         results = drive_service.files().list(
-            q="name='Meet Recordings' and mimeType='application/vnd.google-apps.folder' and trashed=false",
+            q="name='Google Meet' and mimeType='application/vnd.google-apps.folder' and trashed=false",
             fields="files(id, name)",
         ).execute()
-        folders = results.get("files", [])
-        if not folders:
-            logger.error("❌ 'Meet Recordings' folder not found in Drive")
+        root_folders = results.get("files", [])
+        if not root_folders:
+            logger.error("❌ 'Google Meet' folder not found in Drive")
             return 0
 
-        folder_id = folders[0]["id"]
+        root_folder_id = root_folders[0]["id"]
+
+        # Step 2: List all per-meeting subfolders inside "Google Meet"
+        case_subfolders = []
+        page_token = None
+        while True:
+            resp = drive_service.files().list(
+                q=f"'{root_folder_id}' in parents and mimeType='application/vnd.google-apps.folder' and trashed=false",
+                fields="nextPageToken, files(id, name)",
+                pageSize=100,
+                pageToken=page_token,
+            ).execute()
+            case_subfolders.extend(resp.get("files", []))
+            page_token = resp.get("nextPageToken")
+            if not page_token:
+                break
 
         async for db in get_db():
             result = await db.execute(
@@ -230,96 +246,92 @@ async def health_sync_drive_to_db(drive_service):
             processed_ids = [row[0] for row in result.all() if row[0]]
             break
 
-        page_token = None
         new_count = 0
         skipped_insurance_count = 0
 
-        while True:
-            resp = drive_service.files().list(
-                q=f"'{folder_id}' in parents and trashed=false",
-                fields="nextPageToken, files(id, name, mimeType, size)",
-                pageSize=100,
-                pageToken=page_token,
-            ).execute()
+        # Step 3: Walk into each subfolder and pull the video(s) inside it
+        for subfolder in case_subfolders:
+            sub_page_token = None
+            while True:
+                resp = drive_service.files().list(
+                    q=f"'{subfolder['id']}' in parents and trashed=false",
+                    fields="nextPageToken, files(id, name, mimeType, size)",
+                    pageSize=100,
+                    pageToken=sub_page_token,
+                ).execute()
 
-            for item in resp.get("files", []):
-                if not item["mimeType"].startswith("video/"):
-                    continue
+                for item in resp.get("files", []):
+                    if not item["mimeType"].startswith("video/"):
+                        continue
 
-                if is_insurance_file(item["name"]):
-                    skipped_insurance_count += 1
-                    continue
+                    if is_insurance_file(item["name"]):
+                        skipped_insurance_count += 1
+                        continue
 
-                if item["id"] in processed_ids:
-                    continue
+                    if item["id"] in processed_ids:
+                        continue
 
-                if not is_health_file(item["name"]):
-                    logger.warning(f"⚠️ Unknown pattern (not health): {item['name']}")
-                    continue
+                    # Try filename first, fall back to subfolder name
+                    case_id = extract_health_case_id(item["name"]) or extract_health_case_id(subfolder["name"])
+                    if not case_id:
+                        logger.warning(f"⚠️ Unknown pattern (not health): {item['name']} in '{subfolder['name']}'")
+                        continue
 
-                case_id = extract_health_case_id(item["name"])
-                if not case_id:
-                    continue
+                    logger.info(f"🏥 Health video found: {case_id} - {item['name']}")
+                    file_url = f"https://drive.google.com/file/d/{item['id']}/view"
 
-                logger.info(f"🏥 Health video found: {case_id} - {item['name']}")
-                file_url = f"https://drive.google.com/file/d/{item['id']}/view"
-
-                async for db in get_db():
-                    result = await db.execute(
-                        text("SELECT id FROM health_case_recordings WHERE file_url = :url"),
-                        {"url": file_url}
-                    )
-                    if result.first():
-                        break
-
-                    owner_user_id = await _get_case_user_id(db, case_id)
-                    if owner_user_id is None:
-                        logger.warning(
-                            f"⚠️ No matching case / user_id for {case_id} — skipping {item['name']}"
+                    async for db in get_db():
+                        result = await db.execute(
+                            text("SELECT id FROM health_case_recordings WHERE file_url = :url"),
+                            {"url": file_url}
                         )
+                        if result.first():
+                            break
+
+                        owner_user_id = await _get_case_user_id(db, case_id)
+                        if owner_user_id is None:
+                            logger.warning(
+                                f"⚠️ No matching case / user_id for {case_id} — skipping {item['name']}"
+                            )
+                            break
+
+                        await db.execute(
+                            text("""
+                                INSERT INTO health_case_recordings
+                                (case_id, file_name, file_url, drive_file_id, uploaded_at, user_id, processing_status)
+                                VALUES (:case_id, :file_name, :file_url, :drive_file_id, NOW(), :user_id, 'pending')
+                            """),
+                            {
+                                "case_id": case_id,
+                                "file_name": item["name"],
+                                "file_url": file_url,
+                                "drive_file_id": item["id"],
+                                "user_id": owner_user_id,
+                            }
+                        )
+
+                        await create_health_processing_group(db, case_id)
+                        await bump_health_processing_group(db, case_id)
+
+                        await db.commit()
+                        new_count += 1
+                        logger.info(f"✅ Inserted health video + updated group: {case_id}")
                         break
 
-                    await db.execute(
-                        text("""
-                            INSERT INTO health_case_recordings
-                            (case_id, file_name, file_url, drive_file_id, uploaded_at, user_id, processing_status)
-                            VALUES (:case_id, :file_name, :file_url, :drive_file_id, NOW(), :user_id, 'pending')
-                        """),
-                        {
-                            "case_id": case_id,
-                            "file_name": item["name"],
-                            "file_url": file_url,
-                            "drive_file_id": item["id"],
-                            "user_id": owner_user_id,
-                        }
-                    )
-
-                    # Ensure a processing group exists, then bump it —
-                    # this both creates new groups and resets 'completed'
-                    # groups back to 'pending' when a new video arrives.
-                    await create_health_processing_group(db, case_id)
-                    await bump_health_processing_group(db, case_id)
-
-                    await db.commit()
-                    new_count += 1
-                    logger.info(f"✅ Inserted health video + updated group: {case_id}")
+                sub_page_token = resp.get("nextPageToken")
+                if not sub_page_token:
                     break
-
-            page_token = resp.get("nextPageToken")
-            if not page_token:
-                break
 
         logger.info(
             f"✅ Health sync done — {new_count} new video(s) queued, "
-            f"{skipped_insurance_count} insurance file(s) skipped"
+            f"{skipped_insurance_count} insurance file(s) skipped, "
+            f"{len(case_subfolders)} case folder(s) scanned"
         )
         return new_count
 
     except Exception as e:
         logger.error(f"❌ Health Drive sync error: {e}")
         return 0
-
-
 # ================================================================
 # AUDIO EXTRACTION FUNCTIONS
 # ================================================================
@@ -581,26 +593,29 @@ async def run_health_transcribe_cycle(drive_service):
         logger.error(f"❌ Health Drive sync error: {e}")
         return
 
-    # Step 2: Get ONE pending case group, past the grace period, under retry cap
+    # Step 2: Get pending case groups, past the grace period, under retry cap
     async for db in get_db():
-        groups = await get_pending_health_groups(db, limit=1)
+        groups = await get_pending_health_groups(db, limit=10)  # TESTING — was limit=1
 
         if not groups:
             logger.info("📭 No pending health case groups ready for processing")
             return
 
-        group = groups[0]
-
-        # Lock it so an overlapping run can't grab the same case
-        await db.execute(
-            text("""
-                UPDATE health_processing_groups
-                SET status = 'processing', processing_started_at = NOW()
-                WHERE case_id = :case_id AND status = 'pending'
-            """),
-            {"case_id": group.case_id}
-        )
+        # Lock ALL of them up front so a second overlapping run can't grab them
+        for group in groups:
+            await db.execute(
+                text("""
+                    UPDATE health_processing_groups
+                    SET status = 'processing', processing_started_at = NOW()
+                    WHERE case_id = :case_id AND status = 'pending'
+                """),
+                {"case_id": group.case_id}
+            )
         await db.commit()
         break
 
-    await process_health_case_group(drive_service, group)
+    logger.info(f"🏥 Processing {len(groups)} health case group(s) this cycle...")
+
+    # Step 3: Process each one, one at a time (sequential to avoid overloading S3/Gemini)
+    for group in groups:
+        await process_health_case_group(drive_service, group)
