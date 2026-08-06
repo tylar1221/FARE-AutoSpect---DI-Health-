@@ -1,5 +1,3 @@
-This is a complete HTML document for a modern, clean user management dashboard. It displays user data in a table with filtering, status badges, and action buttons for editing or deleting users. The page also includes a section for creating new users and shows key statistics.
-```html
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -148,8 +146,6 @@ This is a complete HTML document for a modern, clean user management dashboard. 
     }
     .role-badge.administrator { background:#fef2f2; color:#b91c1c; border:1px solid #fecaca; }
     .role-badge.investigator { background:#eff6ff; color:#1d4ed8; border:1px solid #bfdbfe; }
-    .role-badge.analyst { background:#fffbeb; color:#b45309; border:1px solid #fde68a; }
-    .role-badge.viewer { background:#f1f5f9; color:#475569; border:1px solid #e2e8f0; }
 
     .status-badge {
       display: inline-block; padding: 2px 12px; border-radius: 30px;
@@ -324,8 +320,6 @@ This is a complete HTML document for a modern, clean user management dashboard. 
           <button class="filter-chip active" data-filter="all">All</button>
           <button class="filter-chip" data-filter="administrator">Admins</button>
           <button class="filter-chip" data-filter="investigator">Investigators</button>
-          <button class="filter-chip" data-filter="analyst">Analysts</button>
-          <button class="filter-chip" data-filter="viewer">Viewers</button>
         </div>
       </div>
       <div class="card-body" style="padding-top:0;">
@@ -375,8 +369,6 @@ This is a complete HTML document for a modern, clean user management dashboard. 
               <select id="newRole">
                 <option value="investigator">Investigator</option>
                 <option value="administrator">Administrator</option>
-                <option value="analyst">Analyst</option>
-                <option value="viewer">Viewer</option>
               </select>
             </div>
             <div class="form-group" style="display:flex;align-items:flex-end;">
@@ -405,8 +397,6 @@ This is a complete HTML document for a modern, clean user management dashboard. 
         <div class="stat-row"><strong>👥 Total users</strong> <span class="num" id="totalUsers">-</span></div>
         <div class="stat-row"><strong>🔒 Administrators</strong> <span class="num" id="totalAdmins">-</span></div>
         <div class="stat-row"><strong>🕵️ Investigators</strong> <span class="num" id="totalInvestigators">-</span></div>
-        <div class="stat-row"><strong>📊 Analysts</strong> <span class="num" id="totalAnalysts">-</span></div>
-        <div class="stat-row"><strong>👁️ Viewers</strong> <span class="num" id="totalViewers">-</span></div>
         <div class="stat-row"><strong>✅ Active</strong> <span class="num" id="totalActive">-</span></div>
       </div>
     </div>
@@ -534,14 +524,10 @@ This is a complete HTML document for a modern, clean user management dashboard. 
     const total = users.length;
     const admins = users.filter(u => u.role === 'administrator').length;
     const inv = users.filter(u => u.role === 'investigator').length;
-    const analysts = users.filter(u => u.role === 'analyst').length;
-    const viewers = users.filter(u => u.role === 'viewer').length;
     const active = users.filter(u => u.is_active !== false).length;
     document.getElementById('totalUsers').textContent = total;
     document.getElementById('totalAdmins').textContent = admins;
     document.getElementById('totalInvestigators').textContent = inv;
-    document.getElementById('totalAnalysts').textContent = analysts;
-    document.getElementById('totalViewers').textContent = viewers;
     document.getElementById('totalActive').textContent = active;
   }
 
@@ -610,10 +596,10 @@ This is a complete HTML document for a modern, clean user management dashboard. 
         await loadUsers();
       } catch (err) { showAlert('listAlert', '❌ ' + err.message, 'error'); }
     } else if (action === '2') {
-      const newRole = prompt('New role (administrator, investigator, analyst, viewer):');
+      const newRole = prompt('New role (administrator or investigator):');
       if (!newRole) return;
-      const valid = ['administrator','investigator','analyst','viewer'];
-      if (!valid.includes(newRole)) { showAlert('listAlert', '❌ Invalid role.', 'error'); return; }
+      const valid = ['administrator','investigator'];
+      if (!valid.includes(newRole)) { showAlert('listAlert', '❌ Invalid role. Must be administrator or investigator.', 'error'); return; }
       try {
         const users = await apiRequest('/api/auth/users');
         const user = users.users.find(u => u.username === username);
@@ -671,4 +657,3 @@ This is a complete HTML document for a modern, clean user management dashboard. 
 
 </body>
 </html>
-```
