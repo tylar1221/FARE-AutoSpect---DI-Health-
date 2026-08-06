@@ -39,35 +39,32 @@ class CalendarService:
             self._load_user_calendar(user_id)
     
     def _load_user_calendar(self, user_id: int):
-        """Load calendar_id for a specific user from database"""
-        try:
-            from sqlalchemy import select
-            from app.database import AsyncSessionLocal
-
-            from app.models import User
-            
-            async def fetch_calendar():
+            """Load calendar_id for a specific user from database"""
+            try:
+                from sqlalchemy import select
                 from app.database import AsyncSessionLocal
-
-                    result = await session.execute(
-                        select(User.calendar_id).where(User.id == user_id)
-                    )
-                    return result.scalar_one_or_none()
-            
-            import asyncio
-            calendar_id = asyncio.run(fetch_calendar())
-            
-            if calendar_id:
-                self._calendar_id = calendar_id
-                print(f"📅 Using user-specific calendar: {self._calendar_id}")
-            else:
-                self._calendar_id = self.default_calendar_id
-                print(f"⚠️ No calendar_id for user {user_id}, using default")
+                from app.models import User
+                import asyncio
                 
-        except Exception as e:
-            print(f"⚠️ Error loading user calendar: {e}")
-            self._calendar_id = self.default_calendar_id
-    
+                async def fetch_calendar():
+                    async with AsyncSessionLocal() as session:
+                        result = await session.execute(
+                            select(User.calendar_id).where(User.id == user_id)
+                        )
+                        return result.scalar_one_or_none()
+                
+                calendar_id = asyncio.run(fetch_calendar())
+                
+                if calendar_id:
+                    self._calendar_id = calendar_id
+                    print(f"📅 Using user-specific calendar: {self._calendar_id}")
+                else:
+                    self._calendar_id = self.default_calendar_id
+                    print(f"⚠️ No calendar_id for user {user_id}, using default")
+                    
+            except Exception as e:
+                print(f"⚠️ Error loading user calendar: {e}")
+                self._calendar_id = self.default_calendar_id
     @property
     def calendar_id(self) -> str:
         """Get the calendar ID (user-specific or default)"""
@@ -290,10 +287,10 @@ class CalendarService:
         """Get calendar_id for a user from database"""
         try:
             from sqlalchemy import select
-            from app.database import async_session_maker
+            from app.database import AsyncSessionLocal  # ✅ CORRECT!
             from app.models import User
             
-            async with async_session_maker() as session:
+            async with AsyncSessionLocal() as session:
                 result = await session.execute(
                     select(User.calendar_id).where(User.id == user_id)
                 )
