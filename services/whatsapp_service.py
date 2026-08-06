@@ -355,16 +355,16 @@ class WhatsAppService:
         case_id: str,
         meeting_time: datetime,
         meeting_link: str
-    ) -> Tuple[bool, str]:
+    ) -> Tuple[bool, str,Optional[str]]:
         """Send meeting reminder - tries template first, falls back to plain text"""
         
         # Try template first
-        success, msg_id = self.send_meeting_reminder(
+        success, msg_id , template_message = self.send_meeting_reminder(
             to_number, name, case_id, meeting_time, meeting_link
         )
         
         if success:
-            return True, msg_id
+            return True, msg_id, template_message
         
         # Fallback to plain text
         from datetime import timezone, timedelta
