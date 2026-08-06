@@ -46,7 +46,7 @@ class BookingRequest(BaseModel):
     case_id: str
     slot_date: str
     slot_time: str
-    duration_minutes: int = 10
+    duration_minutes: int = 30
 
 class UpdateUserCalendarRequest(BaseModel):
     calendar_id: str
@@ -98,7 +98,7 @@ async def get_calendar_info(
 @router.get("/slots")
 async def get_available_slots(
     slot_date: str = Query(..., description="Date in YYYY-MM-DD format"),
-    duration_minutes: int = Query(10, description="Slot duration in minutes"),
+    duration_minutes: int = Query(30, description="Slot duration in minutes"),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
@@ -473,7 +473,8 @@ async def get_user_calendar_info(
     user_calendar_id = user_result.scalar_one_or_none()
     
     # Initialize calendar service
-    calendar = await CalendarService.create(user_id=current_user.id)    
+    calendar = await get_user_calendar_service(current_user.id, db)
+    
 
     calendar_name = "FARE AutoSpect - DI Health"
     if calendar.service:
