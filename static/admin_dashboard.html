@@ -908,11 +908,11 @@
         const scheduled = userCases.filter(c => c.status === 'scheduled').length;
         const non_cooperation = userCases.filter(c => c.status === 'non_cooperation' || c.status === 'failed').length;
 
-        const completionRate = total > 0 ? Math.round((completed / total) * 100) : 0;
+        // const completionRate = total > 0 ? Math.round((completed / total) * 100) : 0;
         
         let colorClass = 'fill-amber';
-        if (completionRate >= 70) colorClass = 'fill-green';
-        else if (completionRate >= 40) colorClass = 'fill-blue';
+        // if (completionRate >= 70) colorClass = 'fill-green';
+        // else if (completionRate >= 40) colorClass = 'fill-blue';
 
         // Generate cases dropdown HTML
         let casesDropdownHtml = '';
@@ -960,11 +960,9 @@
                         <span>📅 ${scheduled} scheduled</span>
                         <span>✅ ${completed} completed</span>
                         <span>🚫 ${non_cooperation} non_cooperation</span>
-                        <span>📊 ${completionRate}% done</span>
                     </div>
                 </div>
                 <div class="progress-bar">
-                    <div class="fill ${colorClass}" style="width: ${completionRate}%;"></div>
                 </div>
                 ${casesDropdownHtml}
             </div>
