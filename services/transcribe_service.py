@@ -23,7 +23,7 @@ from pathlib import Path
 from typing import Optional, Tuple
 
 import boto3
-import google.generativeai as genai
+from google import genai
 from google.genai import types
 
 from app.database import get_db
