@@ -672,7 +672,7 @@
             <div class="stat-card red">
                 <div class="stat-icon"><i class="bi bi-exclamation-triangle"></i></div>
                 <div class="stat-number" id="non_cooperationCases">0</div>
-                <div class="stat-label">Non-Workable</div>
+                <div class="stat-label">non_cooperation</div>
             </div>
         </div>
 
@@ -959,7 +959,7 @@
                         <span>📋 ${pending} pending</span>
                         <span>📅 ${scheduled} scheduled</span>
                         <span>✅ ${completed} completed</span>
-                        <span>🚫 ${non_cooperation} non-workable</span>
+                        <span>🚫 ${non_cooperation} non_cooperation</span>
                         <span>📊 ${completionRate}% done</span>
                     </div>
                 </div>
@@ -1009,7 +1009,7 @@ function toggleCasesDropdown(element) {
                 'pending': '⏳ Pending',
                 'scheduled': '📅 Scheduled',
                 'completed': '✅ Completed',
-                'non_cooperation': '🚫 Non-Workable'
+                'non_cooperation': '🚫 non_cooperation'
             };
             const colors = {
                 'pending': 'fill-amber',
