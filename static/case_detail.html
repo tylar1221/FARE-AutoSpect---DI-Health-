@@ -1000,8 +1000,8 @@
                         </select>
                         <select id="categoryFilter" class="filter-select">
                             <option value="all">All Categories</option>
-                            <option value="normal">Normal Health Claim</option>
-                            <option value="pre_existing">Pre-existing Disease</option>
+                            <option value="normal">Desktop Investigation</option>
+                            <option value="pre_existing">Others</option>
                         </select>
                         <button id="clearSearchBtn" class="clear-search">
                             <i class="bi bi-x-circle"></i> Clear
@@ -1024,8 +1024,8 @@
                             <div class="form-group">
                                 <label>Category *</label>
                                 <select id="caseCategory">
-                                    <option value="normal">Normal Health Claim</option>
-                                    <option value="pre_existing">Pre-existing Disease</option>
+                                    <option value="normal">Desktop Investigation</option>
+                                    <option value="pre_existing">Others</option>
                                 </select>
                             </div>
                         </div>
@@ -1575,7 +1575,7 @@ window.addEventListener('beforeunload', function() {
                     <div class="detail-row"><div class="detail-label">Case ID:</div><div class="detail-value"><strong>${c.case_id}</strong></div></div>
                     <div class="detail-row"><div class="detail-label">Patient Name:</div><div class="detail-value">${escapeHtml(c.name)}</div></div>
                     <div class="detail-row"><div class="detail-label">Phone Number:</div><div class="detail-value">${c.phone_number}</div></div>
-                    <div class="detail-row"><div class="detail-label">Category:</div><div class="detail-value">${c.category === 'normal' ? 'Normal Health Claim' : 'Pre-existing Disease'}</div></div>
+                    <div class="detail-row"><div class="detail-label">Category:</div><div class="detail-value">${c.category === 'normal' ? 'Desktop Investigation' : 'Others'}</div></div>
                     <div class="detail-row"><div class="detail-label">Status:</div><div class="detail-value"><span class="status-badge status-${c.status}">${c.status}</span></div></div>
                     <div class="detail-row"><div class="detail-label">Claim ID:</div><div class="detail-value">${c.claim_id || 'N/A'}</div></div>
                     <div class="detail-row"><div class="detail-label">Insurance Company:</div><div class="detail-value">${c.company_name || 'N/A'}</div></div>
