@@ -195,7 +195,7 @@
     .badge-pending { background:#fef9e3; color:#b45309; }
     .badge-scheduled { background:#e0f2fe; color:#0369a1; }
     .badge-completed { background:#dcfce7; color:#166534; }
-    .badge-non_workable { background:#fef2f2; color:#991b1b; }
+    .badge-non_cooperation { background:#fef2f2; color:#991b1b; }
 
     /* ========== STATS ========== */
     .stat-list { padding: 16px; }
@@ -215,6 +215,7 @@
       color: var(--text2); font-family: 'DM Sans', sans-serif;
     }
     .icon-btn:hover { background:#f8fafc; border-color:#cbd5e1; transform:translateY(-1px); }
+.badge-non_cooperation { background:#fef2f2; color:#991b1b; }
 
     /* ========== TOAST ========== */
     .toast {
@@ -398,7 +399,7 @@
             <button data-status="pending" class="filter-chip active">Pending</button>
             <button data-status="scheduled" class="filter-chip">Scheduled</button>
             <button data-status="completed" class="filter-chip">Completed</button>
-            <button data-status="non_workable" class="filter-chip">Non-workable</button>
+            <button data-status="non_cooperation" class="filter-chip">Non-workable</button>
           </div>
         </div>
         <div class="cases-table-container">
@@ -581,7 +582,7 @@
       const pending = allCases.filter(c => c.status === 'pending').length;
       const scheduled = allCases.filter(c => c.status === 'scheduled').length;
       const completed = allCases.filter(c => c.status === 'completed').length;
-      const nonWorkable = allCases.filter(c => c.status === 'non_workable' || c.status === 'failed').length;
+      const nonWorkable = allCases.filter(c => c.status === 'non_cooperation' || c.status === 'failed').length;
 
       document.getElementById('statPending').textContent = pending;
       document.getElementById('statScheduled').textContent = scheduled;
@@ -609,24 +610,34 @@
       }
     }
 
-    async function sendCompletion(caseId) {
-      try {
-        const response = await fetch(`/webhook/messages/completion`, {
-          method: 'POST',
-          headers: getHeaders(),
-          body: JSON.stringify({ case_id: caseId })
-        });
-        const data = await response.json();
-        if (data.success) {
-          showToast(`✅ Completion message sent for case ${caseId}`);
-        } else {
-          showToast(`❌ ${data.error || 'Failed to send completion'}`, true);
-        }
-      } catch (e) {
-        showToast(`❌ Error: ${e.message}`, true);
-      }
+    // ========== MARK NON-COOPERATION ==========
+async function markNonCooperation(caseId) {
+    // Confirm with user
+    if (!confirm(`Are you sure you want to mark case ${caseId} as Non-Cooperation?\n\nThis will change the status and the case will no longer be bookable.`)) {
+        return;
     }
 
+    try {
+        const response = await fetch(`/api/cases/${caseId}`, {
+            method: 'PUT',
+            headers: getHeaders(),
+            body: JSON.stringify({ 
+                status: 'non_cooperation' 
+            })
+        });
+        
+        const data = await response.json();
+        
+        if (response.ok) {
+            showToast(`✅ Case ${caseId} marked as Non-Cooperation`);
+            await fetchCases(); // Refresh the table
+        } else {
+            showToast(`❌ ${data.detail || 'Failed to update status'}`, true);
+        }
+    } catch (e) {
+        showToast(`❌ Error: ${e.message}`, true);
+    }
+}
     // ========== DROPDOWN TOGGLE ==========
     function toggleDropdown(caseId, event) {
       event.stopPropagation();
@@ -743,8 +754,8 @@
 
       const filtered = allCases.filter(c => {
         if (currentFilter === 'all') return true;
-        if (currentFilter === 'non_workable') {
-          return ['non_workable', 'failed'].includes(c.status);
+        if (currentFilter === 'non_cooperation') {
+          return ['non_cooperation', 'failed'].includes(c.status);
         }
         return c.status === currentFilter;
       });
@@ -762,7 +773,7 @@
       filtered.forEach(c => {
         const driveLink = c.drive_link || '';
         const isScheduled = c.status === 'scheduled';
-        const isCompleted = c.status === 'completed' || c.status === 'cancelled' || c.status === 'failed' || c.status === 'non_workable';
+        const isCompleted = c.status === 'completed' || c.status === 'cancelled' || c.status === 'failed' || c.status === 'non_cooperation';
         const canBook = !isScheduled && !isCompleted;
 
         let actionHtml = '';
@@ -800,14 +811,18 @@
                     <i class="fas fa-chevron-down" style="font-size:0.5rem;"></i>
                   </button>
                   <div class="ehr-menu" id="ehr-menu-${c.case_id}">
-                    <button class="ehr-menu-item" onclick="event.stopPropagation(); sendReminder('${c.case_id}'); toggleDropdown('${c.case_id}', event);">
-                      <i class="fas fa-bell"></i> Send Reminder
-                    </button>
-                    <div class="ehr-menu-divider"></div>
-                    <button class="ehr-menu-item" onclick="event.stopPropagation(); sendCompletion('${c.case_id}'); toggleDropdown('${c.case_id}', event);">
-                      <i class="fas fa-check-circle"></i> Send Completion
-                    </button>
-                  </div>
+    <button class="ehr-menu-item" onclick="event.stopPropagation(); sendReminder('${c.case_id}'); toggleDropdown('${c.case_id}', event);">
+        <i class="fas fa-bell"></i> Send Reminder
+    </button>
+    <div class="ehr-menu-divider"></div>
+    <button class="ehr-menu-item" onclick="event.stopPropagation(); sendCompletion('${c.case_id}'); toggleDropdown('${c.case_id}', event);">
+        <i class="fas fa-check-circle"></i> Send Completion
+    </button>
+    <div class="ehr-menu-divider"></div>
+    <button class="ehr-menu-item" onclick="event.stopPropagation(); markNonCooperation('${c.case_id}'); toggleDropdown('${c.case_id}', event);" style="color: var(--red);">
+        <i class="fas fa-times-circle" style="color: var(--red);"></i> Mark Non-Cooperation
+    </button>
+</div>
                 </div>
               </div>
             </td>
