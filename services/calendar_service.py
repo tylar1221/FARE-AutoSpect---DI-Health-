@@ -39,32 +39,60 @@ class CalendarService:
             self._load_user_calendar(user_id)
     
     def _load_user_calendar(self, user_id: int):
-            """Load calendar_id for a specific user from database"""
+        """Fetch user's calendar_id from database"""
+        try:
+            from sqlalchemy import select
+            from app.database import AsyncSessionLocal
+            from app.models import User
+            import asyncio
+            import concurrent.futures
+            
+            async def fetch_calendar_id():
+                async with AsyncSessionLocal() as session:
+                    result = await session.execute(
+                        select(User.calendar_id).where(User.id == user_id)
+                    )
+                    calendar_id = result.scalar_one_or_none()
+                    print(f"🔍 DEBUG: Found calendar_id in DB for user {user_id}: {calendar_id}")
+                    return calendar_id
+            
+            # ✅ FIX: Handle running event loop
             try:
-                from sqlalchemy import select
-                from app.database import AsyncSessionLocal
-                from app.models import User
-                import asyncio
+                # Check if we're in a running event loop
+                loop = asyncio.get_running_loop()
+                print(f"🔄 Running in async context, using ThreadPoolExecutor")
                 
-                async def fetch_calendar():
-                    async with AsyncSessionLocal() as session:
-                        result = await session.execute(
-                            select(User.calendar_id).where(User.id == user_id)
-                        )
-                        return result.scalar_one_or_none()
+                def sync_fetch():
+                    new_loop = asyncio.new_event_loop()
+                    asyncio.set_event_loop(new_loop)
+                    try:
+                        return new_loop.run_until_complete(fetch_calendar_id())
+                    finally:
+                        new_loop.close()
                 
-                calendar_id = asyncio.run(fetch_calendar())
-                
-                if calendar_id:
-                    self._calendar_id = calendar_id
-                    print(f"📅 Using user-specific calendar: {self._calendar_id}")
-                else:
-                    self._calendar_id = self.default_calendar_id
-                    print(f"⚠️ No calendar_id for user {user_id}, using default")
+                with concurrent.futures.ThreadPoolExecutor(max_workers=1) as executor:
+                    future = executor.submit(sync_fetch)
+                    calendar_id = future.result(timeout=10)
                     
-            except Exception as e:
-                print(f"⚠️ Error loading user calendar: {e}")
+            except RuntimeError:
+                # No running event loop - safe to use asyncio.run()
+                print(f"🔄 Running in sync context, using asyncio.run()")
+                calendar_id = asyncio.run(fetch_calendar_id())
+            
+            if calendar_id:
+                self._calendar_id = calendar_id
+                print(f"✅ Using user-specific calendar: {self._calendar_id}")
+            else:
                 self._calendar_id = self.default_calendar_id
+                print(f"⚠️ No calendar_id for user {user_id}, using default")
+                
+        except Exception as e:
+            print(f"⚠️ Error loading user calendar: {e}")
+            import traceback
+            traceback.print_exc()
+            self._calendar_id = self.default_calendar_id
+
+
     @property
     def calendar_id(self) -> str:
         """Get the calendar ID (user-specific or default)"""
