@@ -17,7 +17,12 @@ from services.whatsapp_service import get_whatsapp_service
 from api.logs import push_log
 
 router = APIRouter(prefix="/api/scheduling", tags=["Scheduling"])
-
+# ============ HELPER: Get User's Calendar ============
+async def get_user_calendar_service(user_id: int, db: AsyncSession) -> CalendarService:
+    """Get CalendarService instance with user's specific calendar ID"""
+    calendar_id = await CalendarService.get_user_calendar_id(user_id, db)
+    print(f"📅 User {user_id} using calendar: {calendar_id}")
+    return CalendarService(user_id=user_id, calendar_id=calendar_id)
 # ============ TIMEZONE HELPER ============
 def get_indian_timezone():
     """Get Indian timezone (Asia/Kolkata)"""
@@ -63,7 +68,7 @@ async def get_calendar_info(
     user_calendar_id = user_result.scalar_one_or_none()
     
     # Initialize calendar service with user_id
-    calendar = CalendarService(user_id=current_user.id)
+    calendar = await get_user_calendar_service(current_user.id, db)
     
     # Get calendar name
     calendar_name = "FARE AutoSpect - DI Health"
@@ -116,7 +121,7 @@ async def get_available_slots(
             }
         
         # Initialize calendar service for this user
-        calendar = CalendarService(user_id=current_user.id)
+        calendar = await get_user_calendar_service(current_user.id, db)
         
         if not calendar.service:
             return {
@@ -200,7 +205,7 @@ async def book_meeting(
         end_time = start_time + timedelta(minutes=request.duration_minutes)
         
         # 3. Initialize calendar service for this user
-        calendar = CalendarService(user_id=current_user.id)
+        calendar = await get_user_calendar_service(current_user.id, db)
         
         if not calendar.service:
             raise HTTPException(500, "Calendar service not available")
@@ -469,6 +474,7 @@ async def get_user_calendar_info(
     
     # Initialize calendar service
     calendar = await CalendarService.create(user_id=current_user.id)    
+
     calendar_name = "FARE AutoSpect - DI Health"
     if calendar.service:
         try:

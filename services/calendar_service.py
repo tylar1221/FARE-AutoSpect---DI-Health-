@@ -267,18 +267,28 @@ class CalendarService:
     
     # ✅ NEW: Helper to get user's calendar ID
     @staticmethod
-    async def get_user_calendar_id(user_id: int) -> Optional[str]:
+    async def get_user_calendar_id(user_id: int, db=None) -> Optional[str]:
         """Get calendar_id for a user from database"""
         try:
             from sqlalchemy import select
-            from app.database import AsyncSessionLocal  # ✅ CORRECT!
+            from app.database import AsyncSessionLocal
             from app.models import User
             
+            # If a session is provided, use it
+            if db:
+                result = await db.execute(
+                    select(User.calendar_id).where(User.id == user_id)
+                )
+                return result.scalar_one_or_none()
+            
+            # Otherwise create a new session
             async with AsyncSessionLocal() as session:
                 result = await session.execute(
                     select(User.calendar_id).where(User.id == user_id)
                 )
-                return result.scalar_one_or_none()
+                calendar_id = result.scalar_one_or_none()
+                print(f"🔍 Fetched calendar_id for user {user_id}: {calendar_id}")
+                return calendar_id
         except Exception as e:
             print(f"⚠️ Error fetching user calendar: {e}")
             return None
