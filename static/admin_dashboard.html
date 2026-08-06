@@ -572,7 +572,47 @@
             .stat-card .stat-number {
                 font-size: 1.5rem;
             }
-        }
+        }.investigator-item-wrapper {
+    margin-bottom: 8px;
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 8px;
+}
+
+.investigator-item-wrapper:last-child {
+    border-bottom: none;
+    margin-bottom: 0;
+}
+
+.investigator-item {
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+.investigator-item:hover {
+    background: var(--surface-2);
+    border-radius: 8px;
+    padding-left: 8px;
+    padding-right: 8px;
+}
+
+.cases-dropdown {
+    animation: slideDown 0.3s ease;
+}
+
+@keyframes slideDown {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.cases-dropdown div:last-child {
+    border-bottom: none !important;
+}
     </style>
 </head>
 <body>
@@ -800,13 +840,12 @@
         return;
     }
 
-    // Build a map of investigator IDs to usernames (store both string and number versions)
+    // Build a map of investigator IDs to usernames
     const investigatorMap = {};
     investigators.forEach(inv => {
-        // Store by ID as both string and number
         if (inv.id) {
             investigatorMap[String(inv.id)] = inv.username;
-            investigatorMap[Number(inv.id)] = inv.username; // Store as number too
+            investigatorMap[Number(inv.id)] = inv.username;
         }
         if (inv._id) {
             investigatorMap[String(inv._id)] = inv.username;
@@ -816,24 +855,17 @@
             investigatorMap[String(inv.userId)] = inv.username;
             investigatorMap[Number(inv.userId)] = inv.username;
         }
-        // Also store by username itself
         investigatorMap[inv.username] = inv.username;
         investigatorMap[inv.username.toLowerCase()] = inv.username;
     });
-    
-    console.log('🗺️ Updated Investigator Map:', investigatorMap);
 
     // Find unassigned cases
     const unassignedCases = cases.filter(c => {
         if (!c.user_id && c.user_id !== 0) return true;
         const userIdStr = String(c.user_id);
         const userIdNum = Number(c.user_id);
-        // Check both string and number versions
         return !investigatorMap[userIdStr] && !investigatorMap[userIdNum];
     });
-    
-    console.log(`✅ Matched ${cases.length - unassignedCases.length} cases to investigators`);
-    console.log(`❌ ${unassignedCases.length} cases unassigned`);
 
     let unassignedHtml = '';
     if (unassignedCases.length > 0) {
@@ -855,12 +887,11 @@
     }
 
     const investigatorsHtml = investigators.map(inv => {
-        // MATCH CASES BY USER_ID - Check both string and number
+        // Match cases for this investigator
         const userCases = cases.filter(c => {
             if (!c.user_id && c.user_id !== 0) return false;
             const userIdStr = String(c.user_id);
             const userIdNum = Number(c.user_id);
-            // Check if this case's user_id matches this investigator's ID
             return userIdStr === String(inv.id) || 
                    userIdNum === Number(inv.id) ||
                    userIdStr === String(inv._id) || 
@@ -883,36 +914,81 @@
         if (completionRate >= 70) colorClass = 'fill-green';
         else if (completionRate >= 40) colorClass = 'fill-blue';
 
-        // Log each investigator's cases
+        // Generate cases dropdown HTML
+        let casesDropdownHtml = '';
         if (userCases.length > 0) {
-            console.log(`📋 ${inv.username} (ID: ${inv.id}) has ${userCases.length} cases:`, 
-                userCases.map(c => `${c.case_id} (${c.status})`).join(', '));
-        } else {
-            console.log(`📋 ${inv.username} has 0 cases`);
+            casesDropdownHtml = `
+                <div class="cases-dropdown" style="display: none; margin-top: 10px; padding: 10px; background: var(--surface-2); border-radius: 8px; border-left: 3px solid var(--blue);">
+                    <div style="font-size: 0.75rem; font-weight: 600; color: var(--ink-mid); margin-bottom: 8px;">
+                        <i class="bi bi-folder2-open"></i> Assigned Cases (${userCases.length})
+                    </div>
+                    ${userCases.map(c => `
+                        <div style="display: flex; justify-content: space-between; padding: 6px 0; border-bottom: 1px solid var(--border); font-size: 0.8rem;">
+                            <span><strong>${c.case_id}</strong> - ${c.name}</span>
+                            <span style="display: flex; gap: 12px;">
+                                <span style="color: var(--ink-muted);">Claim: ${c.claim_id || 'N/A'}</span>
+                                <span style="
+                                    padding: 2px 8px; 
+                                    border-radius: 12px; 
+                                    font-size: 0.65rem; 
+                                    font-weight: 500;
+                                    background: ${c.status === 'completed' ? 'var(--green-dim)' : 
+                                              c.status === 'scheduled' ? 'var(--blue-dim)' : 
+                                              c.status === 'pending' ? 'var(--amber-dim)' : 'var(--red-dim)'};
+                                    color: ${c.status === 'completed' ? 'var(--green)' : 
+                                           c.status === 'scheduled' ? 'var(--blue)' : 
+                                           c.status === 'pending' ? 'var(--amber)' : 'var(--red)'};
+                                ">${c.status}</span>
+                            </span>
+                        </div>
+                    `).join('')}
+                </div>
+            `;
         }
 
         return `
-            <div class="investigator-item">
-                <div class="investigator-name">
-                    <i class="bi bi-person-circle" style="color: var(--blue);"></i>
-                    ${inv.username}
-                    <span class="badge">${total} cases</span>
+            <div class="investigator-item-wrapper" style="cursor: pointer;">
+                <div class="investigator-item" onclick="toggleCasesDropdown(this)">
+                    <div class="investigator-name">
+                        <i class="bi bi-person-circle" style="color: var(--blue);"></i>
+                        ${inv.username}
+                        <span class="badge">${total} cases</span>
+                        <i class="bi bi-chevron-down" style="font-size: 0.8rem; color: var(--ink-muted); transition: transform 0.3s;"></i>
+                    </div>
+                    <div class="investigator-stats">
+                        <span>📋 ${pending} pending</span>
+                        <span>📅 ${scheduled} scheduled</span>
+                        <span>✅ ${completed} completed</span>
+                        <span>🚫 ${nonWorkable} non-workable</span>
+                        <span>📊 ${completionRate}% done</span>
+                    </div>
                 </div>
-                <div class="investigator-stats">
-                    <span>📋 ${pending} pending</span>
-                    <span>📅 ${scheduled} scheduled</span>
-                    <span>✅ ${completed} completed</span>
-                    <span>🚫 ${nonWorkable} non-workable</span>
-                    <span>📊 ${completionRate}% done</span>
+                <div class="progress-bar">
+                    <div class="fill ${colorClass}" style="width: ${completionRate}%;"></div>
                 </div>
-            </div>
-            <div class="progress-bar">
-                <div class="fill ${colorClass}" style="width: ${completionRate}%;"></div>
+                ${casesDropdownHtml}
             </div>
         `;
     }).join('');
 
     container.innerHTML = unassignedHtml + investigatorsHtml;
+}
+
+// New function to toggle dropdown
+function toggleCasesDropdown(element) {
+    const wrapper = element.closest('.investigator-item-wrapper');
+    const dropdown = wrapper.querySelector('.cases-dropdown');
+    const chevron = wrapper.querySelector('.bi-chevron-down');
+    
+    if (dropdown) {
+        if (dropdown.style.display === 'none' || dropdown.style.display === '') {
+            dropdown.style.display = 'block';
+            if (chevron) chevron.style.transform = 'rotate(180deg)';
+        } else {
+            dropdown.style.display = 'none';
+            if (chevron) chevron.style.transform = 'rotate(0deg)';
+        }
+    }
 }
         function updateStatusBreakdown(cases) {
             const container = document.getElementById('statusBreakdown');
