@@ -56,12 +56,12 @@ class CalendarService:
                     print(f"🔍 DEBUG: Found calendar_id in DB for user {user_id}: {calendar_id}")
                     return calendar_id
             
-            # ✅ FIX: Handle running event loop
+            # ✅ FIX: Check if we're in a running event loop
             try:
-                # Check if we're in a running event loop
                 loop = asyncio.get_running_loop()
                 print(f"🔄 Running in async context, using ThreadPoolExecutor")
                 
+                # Create a new event loop in a separate thread
                 def sync_fetch():
                     new_loop = asyncio.new_event_loop()
                     asyncio.set_event_loop(new_loop)
