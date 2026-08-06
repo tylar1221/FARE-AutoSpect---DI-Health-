@@ -42,11 +42,13 @@ class CalendarService:
         """Load calendar_id for a specific user from database"""
         try:
             from sqlalchemy import select
-            from app.database import async_session_maker
+            from app.database import AsyncSessionLocal
+
             from app.models import User
             
             async def fetch_calendar():
-                async with async_session_maker() as session:
+                from app.database import AsyncSessionLocal
+
                     result = await session.execute(
                         select(User.calendar_id).where(User.id == user_id)
                     )
