@@ -453,7 +453,7 @@
             border: 1px solid rgba(22, 163, 74, 0.2);
         }
 
-        .status-non cooperation {
+        .status-non_cooperation {
             background: var(--red-dim);
             color: var(--red);
             border: 1px solid rgba(220, 38, 38, 0.2);
@@ -996,7 +996,7 @@
                             <option value="pending">Pending</option>
                             <option value="scheduled">Scheduled</option>
                             <option value="completed">Completed</option>
-                            <option value="non cooperation">non cooperation</option>
+                            <option value="non_cooperation">non_cooperation</option>
                         </select>
                         <select id="categoryFilter" class="filter-select">
                             <option value="all">All Categories</option>
@@ -1552,7 +1552,7 @@ window.addEventListener('beforeunload', function() {
                     <div class="detail-row"><div class="detail-label">Patient Name:</div><div class="detail-value"><input type="text" id="edit_name" class="edit-input" value="${escapeHtml(c.name)}"></div></div>
                     <div class="detail-row"><div class="detail-label">Phone Number:</div><div class="detail-value"><input type="tel" id="edit_phone" class="edit-input" value="${c.phone_number}"></div></div>
                     <div class="detail-row"><div class="detail-label">Category:</div><div class="detail-value"><select id="edit_category" class="edit-select"><option value="normal" ${c.category === 'normal' ? 'selected' : ''}>Normal</option><option value="pre_existing" ${c.category === 'pre_existing' ? 'selected' : ''}>Pre-existing</option></select></div></div>
-                    <div class="detail-row"><div class="detail-label">Status:</div><div class="detail-value"><select id="edit_status" class="edit-select"><option value="pending" ${c.status === 'pending' ? 'selected' : ''}>Pending</option><option value="scheduled" ${c.status === 'scheduled' ? 'selected' : ''}>Scheduled</option><option value="completed" ${c.status === 'completed' ? 'selected' : ''}>Completed</option><option value="non cooperation" ${c.status === 'non cooperation' ? 'selected' : ''}>non cooperation</option></select></div></div>
+                    <div class="detail-row"><div class="detail-label">Status:</div><div class="detail-value"><select id="edit_status" class="edit-select"><option value="pending" ${c.status === 'pending' ? 'selected' : ''}>Pending</option><option value="scheduled" ${c.status === 'scheduled' ? 'selected' : ''}>Scheduled</option><option value="completed" ${c.status === 'completed' ? 'selected' : ''}>Completed</option><option value="non_cooperation" ${c.status === 'non_cooperation' ? 'selected' : ''}>non_cooperation</option></select></div></div>
                     <div class="detail-row"><div class="detail-label">Claim ID:</div><div class="detail-value"><input type="text" id="edit_claim_id" class="edit-input" value="${c.claim_id || ''}"></div></div>
                     <div class="detail-row"><div class="detail-label">Insurance Company:</div><div class="detail-value"><input type="text" id="edit_company" class="edit-input" value="${c.company_name || ''}"></div></div>
                 </div>
