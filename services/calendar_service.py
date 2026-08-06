@@ -1,4 +1,4 @@
-# services/calendar_service.py - FULL UPDATED VERSION with Calendar Name
+# services/calendar_service.py - UPDATED with per-user calendar support
 
 import os
 import pickle
@@ -14,14 +14,62 @@ from googleapiclient.errors import HttpError
 IST = timezone(timedelta(hours=5, minutes=30))
 
 class CalendarService:
-    """Google Calendar Service - Uses your DEDICATED calendar"""
+    """Google Calendar Service - Supports per-user calendars"""
     
-    def __init__(self):
+    def __init__(self, user_id: Optional[int] = None):
+        """
+        Initialize with optional user_id.
+        If user_id provided, fetches their calendar_id from database.
+        """
         self.service = None
-        self.calendar_name = "FARE AutoSpect - DI Health"  # ✅ ADDED
-        self.calendar_id = os.getenv("GOOGLE_CALENDAR_ID", "c_deb63eb357ea9d479747664c03531500f234ef7485bc09f24fe2581a3134c508@group.calendar.google.com")
+        self.user_id = user_id
+        self._calendar_id = None
+        self.calendar_name = "FARE AutoSpect - DI Health"
+        
+        # Default fallback calendar
+        self.default_calendar_id = os.getenv(
+            "GOOGLE_CALENDAR_ID", 
+            "c_deb63eb357ea9d479747664c03531500f234ef7485bc09f24fe2581a3134c508@group.calendar.google.com"
+        )
+        
         self.authenticate()
-        print(f"📅 Using Calendar: {self.calendar_id}")
+        
+        # If user_id provided, load their calendar
+        if user_id:
+            self._load_user_calendar(user_id)
+    
+    def _load_user_calendar(self, user_id: int):
+        """Load calendar_id for a specific user from database"""
+        try:
+            from sqlalchemy import select
+            from app.database import async_session_maker
+            from app.models import User
+            
+            async def fetch_calendar():
+                async with async_session_maker() as session:
+                    result = await session.execute(
+                        select(User.calendar_id).where(User.id == user_id)
+                    )
+                    return result.scalar_one_or_none()
+            
+            import asyncio
+            calendar_id = asyncio.run(fetch_calendar())
+            
+            if calendar_id:
+                self._calendar_id = calendar_id
+                print(f"📅 Using user-specific calendar: {self._calendar_id}")
+            else:
+                self._calendar_id = self.default_calendar_id
+                print(f"⚠️ No calendar_id for user {user_id}, using default")
+                
+        except Exception as e:
+            print(f"⚠️ Error loading user calendar: {e}")
+            self._calendar_id = self.default_calendar_id
+    
+    @property
+    def calendar_id(self) -> str:
+        """Get the calendar ID (user-specific or default)"""
+        return self._calendar_id or self.default_calendar_id
     
     def authenticate(self) -> bool:
         """Authenticate with Google Calendar using OAuth token"""
@@ -46,7 +94,7 @@ class CalendarService:
             
             self.service = build("calendar", "v3", credentials=creds)
             
-            # ✅ FETCH CALENDAR NAME FROM GOOGLE
+            # Fetch calendar name
             try:
                 calendar_metadata = self.service.calendarList().get(
                     calendarId=self.calendar_id
@@ -64,13 +112,12 @@ class CalendarService:
             self.service = None
             return False
     
-    # ✅ NEW: Get calendar name
     def get_calendar_name(self) -> str:
         """Get the calendar name"""
         return self.calendar_name
     
     async def get_busy_times(self, date_obj: date) -> List[Tuple[datetime, datetime, str, str, str]]:
-        """Get busy times WITH event details from YOUR calendar"""
+        """Get busy times from the user's calendar"""
         if not self.service:
             return []
         
@@ -79,7 +126,7 @@ class CalendarService:
         
         try:
             events_result = self.service.events().list(
-                calendarId=self.calendar_id,
+                calendarId=self.calendar_id,  # ← Uses user-specific calendar
                 timeMin=start_of_day.isoformat(),
                 timeMax=end_of_day.isoformat(),
                 singleEvents=True,
@@ -114,18 +161,15 @@ class CalendarService:
             return []
     
     async def create_meeting_event(
-    self,
-    case_name: str,
-    case_id: str,
-    date: date,
-    start_time: time,
-    end_time: time,
-    phone_number: str
-) -> Tuple[str, str, str, str]:
-        """
-        Create event in calendar with Google Meet
-        Returns: (event_id, meet_link, meeting_rec_id, calendar_event_summary)
-        """
+        self,
+        case_name: str,
+        case_id: str,
+        date: date,
+        start_time: time,
+        end_time: time,
+        phone_number: str
+    ) -> Tuple[str, str, str, str]:
+        """Create event in user's calendar"""
         if not self.service:
             print("❌ Calendar service not authenticated")
             return None, None, None, None
@@ -133,11 +177,7 @@ class CalendarService:
         start_dt = datetime.combine(date, start_time).replace(tzinfo=IST)
         end_dt = datetime.combine(date, end_time).replace(tzinfo=IST)
         
-        # Format case_id to match health pattern: H-ICS-260425-DB660
-        # Ensure case_id is in proper format
-      
         formatted_case_id = case_id if case_id.startswith("H-") else f"H-{case_id}"
-        # Create event summary matching health system format
         event_summary = f"Health_Case ({formatted_case_id})"
         
         event = {
@@ -167,7 +207,7 @@ class CalendarService:
         
         try:
             created = self.service.events().insert(
-                calendarId=self.calendar_id,
+                calendarId=self.calendar_id,  # ← Uses user-specific calendar
                 body=event,
                 conferenceDataVersion=1,
             ).execute()
@@ -180,10 +220,8 @@ class CalendarService:
             
             event_id = created.get("id")
             
-            # Extract meeting record ID from meet link
             meeting_rec_id = None
             if meet_link:
-                import re
                 m = re.search(r'meet\.google\.com/([a-z-]+)', meet_link)
                 if m:
                     meeting_rec_id = m.group(1)
@@ -191,7 +229,6 @@ class CalendarService:
             print(f"✅ Created event in calendar: {event_id}")
             print(f"📹 Meet link: {meet_link}")
             print(f"🔑 Meeting record ID: {meeting_rec_id}")
-            print(f"📋 Event summary: {event_summary}")
             
             return event_id, meet_link, meeting_rec_id, event_summary
             
@@ -204,7 +241,7 @@ class CalendarService:
         date_obj: date,
         duration_minutes: int = 30
     ) -> List[Dict[str, Any]]:
-        """Get available slots with metadata from YOUR calendar"""
+        """Get available slots from user's calendar"""
         busy_events = await self.get_busy_times(date_obj)
         
         if date_obj.weekday() >= 5:
@@ -244,3 +281,21 @@ class CalendarService:
             current += timedelta(minutes=duration_minutes)
         
         return slots
+    
+    # ✅ NEW: Helper to get user's calendar ID
+    @staticmethod
+    async def get_user_calendar_id(user_id: int) -> Optional[str]:
+        """Get calendar_id for a user from database"""
+        try:
+            from sqlalchemy import select
+            from app.database import async_session_maker
+            from app.models import User
+            
+            async with async_session_maker() as session:
+                result = await session.execute(
+                    select(User.calendar_id).where(User.id == user_id)
+                )
+                return result.scalar_one_or_none()
+        except Exception as e:
+            print(f"⚠️ Error fetching user calendar: {e}")
+            return None

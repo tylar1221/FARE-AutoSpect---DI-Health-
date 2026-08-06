@@ -27,6 +27,8 @@ class User(Base):
     created_at = Column(DateTime, server_default=func.now())
     is_active = Column(Boolean, default=True)
 
+    calendar_id = Column(String(255), nullable=True, default=None)
+
     # Relationships
     cases = relationship("DICase", back_populates="user")
     documents = relationship("CaseDocument", back_populates="user")
@@ -147,7 +149,46 @@ class WhatsAppMessage(Base):
         Index("idx_health_whatsapp_sent_at", "sent_at"),
     )
 
+# ============ HEALTH CASE RECORDINGS MODEL ============
+class HealthCaseRecording(Base):
+    __tablename__ = "health_case_recordings"
 
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    case_id = Column(String(50), ForeignKey("health_di_cases.case_id"), nullable=False, index=True)
+    file_name = Column(String(255), nullable=False)
+    file_url = Column(String(1000), nullable=False)
+    drive_file_id = Column(String(255), nullable=False)
+    processing_status = Column(String(50), default="pending", index=True)
+    uploaded_at = Column(DateTime, server_default=func.now())
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=True)
+
+    __table_args__ = (
+        Index("idx_health_recordings_case_status", "case_id", "processing_status"),
+        Index("idx_health_recordings_drive_file", "drive_file_id"),
+    )
+
+
+# ============ HEALTH PROCESSING GROUPS MODEL ============
+class HealthProcessingGroup(Base):
+    __tablename__ = "health_processing_groups"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    case_id = Column(String(50), ForeignKey("health_di_cases.case_id"), unique=True, nullable=False, index=True)
+    status = Column(String(50), default="pending", index=True)
+    video_count = Column(Integer, default=0)
+    retry_count = Column(Integer, default=0)
+    first_seen = Column(DateTime, server_default=func.now())
+    last_seen = Column(DateTime, server_default=func.now())
+    processing_started_at = Column(DateTime, nullable=True)
+    completed_at = Column(DateTime, nullable=True)
+    error_message = Column(Text, nullable=True)
+    created_at = Column(DateTime, server_default=func.now())
+    updated_at = Column(DateTime, onupdate=func.now())
+
+    __table_args__ = (
+        Index("idx_health_groups_status_lastseen", "status", "last_seen"),
+        Index("idx_health_groups_case_status", "case_id", "status"),
+    )
 # ============ QUESTIONNAIRE MODEL ============
 class Questionnaire(Base):
     __tablename__ = "health_questionnaires"
