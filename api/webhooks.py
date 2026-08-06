@@ -694,9 +694,7 @@ async def send_completion_message(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    """
-    Send a completion message to a case.
-    """
+    """Send a completion message to a case using template."""
     from services.whatsapp_service import get_whatsapp_service
     from datetime import datetime
     
@@ -711,21 +709,14 @@ async def send_completion_message(
     if not case:
         raise HTTPException(404, "Case not found or no permission")
     
-    display_id = case.claim_id if case.claim_id else case.case_id
-    
-    message = f"""✅ Verification Complete!
-
-Dear {case.name},
-
-Your health claim verification for case {display_id} has been completed.
-
-The report has been generated and will be shared with the insurance company.
-
-Thank you for your cooperation."""
-    
-    # Send
+    # ✅ USE TEMPLATE VIA send_completion() METHOD
     whatsapp = get_whatsapp_service()
-    success, msg_id = whatsapp.send_message(case.phone_number, message)
+    success, msg_id, formatted_message = whatsapp.send_completion(
+        to_number=case.phone_number,
+        name=case.name,
+        case_id=case.case_id,
+        claim_id=case.claim_id
+    )
     
     if not success:
         raise HTTPException(500, "Failed to send completion message")
@@ -735,7 +726,7 @@ Thank you for your cooperation."""
         case_id=case.case_id,
         from_number="System",
         to_number=case.phone_number,
-        message_body=f"✅ Completion sent to {case.phone_number}",
+        message_body=formatted_message,  # ✅ Save the template message
         message_type="completion",
         status="sent",
         sent_at=datetime.now(),

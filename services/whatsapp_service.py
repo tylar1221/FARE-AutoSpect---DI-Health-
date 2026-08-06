@@ -405,26 +405,25 @@ class WhatsAppService:
 
     # ============ SEND COMPLETION (Plain Text Fallback) ============
     def send_completion(
-        self,
-        to_number: str,
-        name: str,
-        case_id: str,
-        claim_id: str = None
-    ) -> Tuple[bool, str]:
+    self,
+    to_number: str,
+    name: str,
+    case_id: str,
+    claim_id: str = None
+) -> Tuple[bool, str, Optional[str]]:  # ← CHANGE TO 3
         """Send completion message - tries template first, falls back to plain text"""
         
         # Try template first
-        success, msg_id = self.send_verification_complete(
+        success, msg_id, template_message = self.send_verification_complete(  # ← UNPACK 3
             to_number, name, case_id, claim_id
         )
         
         if success:
-            return True, msg_id
+            return True, msg_id, template_message  # ← RETURN 3
         
         # Fallback to plain text
         display_id = claim_id if claim_id else case_id
         
-        # ✅ MATCHES YOUR TEMPLATE FORMAT
         message = f"""Dear {name},
 
     Verification for claim ID {display_id} has been completed successfully.
@@ -436,7 +435,8 @@ class WhatsAppService:
     Regards,
     ICS Assure Services Pvt Ltd."""
         
-        return self.send_message(to_number, message)
+        success, msg_id = self.send_message(to_number, message)
+        return success, msg_id, message  # ← RETURN 3
     
     # ============ SEND CUSTOM MESSAGE ============
     def send_custom_message(
