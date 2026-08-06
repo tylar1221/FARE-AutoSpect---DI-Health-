@@ -623,16 +623,13 @@ async def send_custom_message(
         "case_id": case_id
     }
 
-
 @router.post("/messages/reminder")
 async def send_reminder_message(
     request: SendReminderRequest,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    """
-    Send a meeting reminder to a case.
-    """
+    """Send a meeting reminder to a case using template."""
     from services.whatsapp_service import get_whatsapp_service
     from datetime import datetime
     
@@ -650,23 +647,15 @@ async def send_reminder_message(
     if not case.scheduled_time or not case.meeting_link:
         raise HTTPException(400, "No meeting scheduled for this case")
     
-    # Format reminder
-    scheduled_time = case.scheduled_time
-    formatted_time = scheduled_time.strftime('%I:%M %p').lstrip('0')
-    formatted_date = scheduled_time.strftime('%A, %B %d, %Y')
-    
-    message = f"""🔔 REMINDER: Your consultation is today!
-
-📅 {formatted_date}
-🕒 {formatted_time}
-
-🔗 Join: {case.meeting_link}
-
-Please join 5 minutes early."""
-    
-    # Send
+    # ✅ USE TEMPLATE VIA send_reminder() METHOD
     whatsapp = get_whatsapp_service()
-    success, msg_id = whatsapp.send_message(case.phone_number, message)
+    success, msg_id, formatted_message = whatsapp.send_reminder(
+        to_number=case.phone_number,
+        name=case.name,
+        case_id=case.case_id,
+        meeting_time=case.scheduled_time,
+        meeting_link=case.meeting_link
+    )
     
     if not success:
         raise HTTPException(500, "Failed to send reminder")
@@ -676,7 +665,7 @@ Please join 5 minutes early."""
         case_id=case.case_id,
         from_number="System",
         to_number=case.phone_number,
-        message_body=f"🔔 Reminder sent to {case.phone_number}",
+        message_body=formatted_message,  # ✅ Save the template message
         message_type="reminder",
         status="sent",
         sent_at=datetime.now(),
