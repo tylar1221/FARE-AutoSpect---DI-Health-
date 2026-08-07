@@ -197,7 +197,6 @@ async def handle_text_message(from_number: str, message_text: str, message_id: s
     
     message_lower = message_text.lower().strip()
     
-    # Find case by phone number
     async for db in get_db():
         result = await db.execute(
             select(DICase).where(DICase.phone_number == from_number)
@@ -205,21 +204,22 @@ async def handle_text_message(from_number: str, message_text: str, message_id: s
         case = result.scalars().first()
         
         if not case:
-            # Try to find by phone number with different formatting
-            # For now, just log
             logger.warning(f"No case found for {from_number}")
             break
         
         case_id = case.case_id
         
-        # Save message to database
+        # ✅ FIX: Add message_id
         whatsapp_msg = WhatsAppMessage(
             case_id=case_id,
             from_number=from_number,
             to_number=settings.WHATSAPP_PHONE_NUMBER_ID,
             message_body=message_text,
             message_type="text",
-            status="received"
+            status="received",
+            message_id=message_id,  # ← 🔥 ADD THIS!
+            is_incoming=True,
+            is_read=False
         )
         db.add(whatsapp_msg)
         await db.commit()
@@ -370,6 +370,43 @@ FARE AutoSpect Team"""
 async def handle_interactive_response(from_number: str, button_id: str, message_id: str):
     """Handle button clicks from interactive messages"""
     
+    from sqlalchemy.ext.asyncio import AsyncSession
+    from sqlalchemy import select
+    from app.database import get_db
+    from app.models import DICase, WhatsAppMessage
+    
+    # ✅ Save interactive response to database
+    async for db in get_db():
+        result = await db.execute(
+            select(DICase).where(DICase.phone_number == from_number)
+        )
+        case = result.scalars().first()
+        
+        if case:
+            # Determine button text
+            if button_id.startswith("AVAILABLE_"):
+                button_text = "✅ Available (Yes)"
+            elif button_id.startswith("UNAVAILABLE_"):
+                button_text = "❌ Not Available (No)"
+            else:
+                button_text = f"Clicked: {button_id}"
+            
+            whatsapp_msg = WhatsAppMessage(
+                case_id=case.case_id,
+                from_number=from_number,
+                to_number=settings.WHATSAPP_PHONE_NUMBER_ID,
+                message_body=f"🖱️ {button_text}",
+                message_type="interactive",
+                status="received",
+                message_id=message_id,  # ← 🔥 ADD THIS!
+                is_incoming=True,
+                is_read=False
+            )
+            db.add(whatsapp_msg)
+            await db.commit()
+        break
+    
+    # Handle the button logic
     if button_id.startswith("AVAILABLE_"):
         case_id = button_id.replace("AVAILABLE_", "")
         await handle_yes_response(case_id, from_number)
@@ -451,7 +488,10 @@ async def handle_media_message(from_number: str, media_type: str, media_id: str,
                 to_number=settings.WHATSAPP_PHONE_NUMBER_ID,
                 message_body=message_body,
                 message_type=media_type,
-                status="received"
+                status="received",
+                 message_id=message_id,  # ← 🔥 ADD THIS!
+                is_incoming=True,
+                is_read=False
             )
             db.add(whatsapp_msg)
             
@@ -490,7 +530,10 @@ async def handle_location_message(from_number: str, latitude: float, longitude: 
                 to_number=settings.WHATSAPP_PHONE_NUMBER_ID,
                 message_body=location_text,
                 message_type="location",
-                status="received"
+                status="received",
+                message_id=message_id,  # ← 🔥 ADD THIS!
+                is_incoming=True,
+                is_read=False
             )
             db.add(whatsapp_msg)
             await db.commit()
