@@ -635,7 +635,35 @@ function formatDateIST(dateStr) {
       document.getElementById('statNonWorkable').textContent = nonWorkable;
       document.getElementById('statTotal').textContent = allCases.length;
     }
+// ========== SEND COMPLETION ==========
+async function sendCompletion(caseId) {
+    // Confirm with user
+    if (!confirm(`Are you sure you want to send completion message for case ${caseId}?\n\nThis will mark the case as completed.`)) {
+        return;
+    }
 
+    try {
+        showToast(`📤 Sending completion for case ${caseId}...`, 'info');
+        
+        const response = await fetch(`/webhook/messages/completion`, {
+            method: 'POST',
+            headers: getHeaders(),
+            body: JSON.stringify({ case_id: caseId })
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            showToast(`✅ Completion message sent for case ${caseId}`);
+            await fetchCases(); // Refresh the table
+            await checkUnreadCount(); // Update unread count
+        } else {
+            showToast(`❌ ${data.detail || 'Failed to send completion'}`, true);
+        }
+    } catch (e) {
+        showToast(`❌ Error: ${e.message}`, true);
+    }
+}
     // ========== EHR ACTIONS ==========
     async function sendReminder(caseId) {
       try {
