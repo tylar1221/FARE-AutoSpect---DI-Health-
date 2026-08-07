@@ -389,8 +389,7 @@ async def handle_media_message(from_number: str, media_type: str, media_id: str,
     from sqlalchemy import select
     from app.database import get_db
     from app.models import DICase, CaseDocument, WhatsAppMessage
-    from services.storage_factory import StorageFactory
-    from services.whatsapp_service import get_whatsapp_service
+    from services.storage_service import StorageFactory  # ✅ CORRECT    from services.whatsapp_service import get_whatsapp_service
     import os
     
     whatsapp = get_whatsapp_service()
