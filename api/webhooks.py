@@ -477,12 +477,17 @@ async def handle_media_message(from_number: str, media_type: str, media_id: str,
             db.add(document)
             
             # Save message
-            message_body = f"{media_type.capitalize()}: {filename}"
+            # Save message with Drive link
+            message_body = f"📎 {media_type.capitalize()}"
+            if filename:
+                message_body += f"\n📄 File: {filename}"
             if caption:
-                message_body += f"\nCaption: {caption}"
+                message_body += f"\n📝 Caption: {caption}"
             if duration:
-                message_body += f"\nDuration: {duration}s"
-            
+                message_body += f"\n⏱️ Duration: {duration}s"
+            # ✅ ADD THE DRIVE LINK
+            message_body += f"\n🔗 {file_url}"
+
             whatsapp_msg = WhatsAppMessage(
                 case_id=case.case_id,
                 from_number=from_number,
@@ -490,7 +495,7 @@ async def handle_media_message(from_number: str, media_type: str, media_id: str,
                 message_body=message_body,
                 message_type=media_type,
                 status="received",
-                message_id=message_id,  # ← 🔥 ADD THIS!
+                message_id=message_id,
                 is_incoming=True,
                 is_read=False
             )
