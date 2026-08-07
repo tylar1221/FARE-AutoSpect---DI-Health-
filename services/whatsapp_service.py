@@ -250,29 +250,33 @@ class WhatsAppService:
 
     # ============ TEMPLATE: VERIFICATION COMPLETE ============
     def send_verification_complete(
-        self,
-        to_number: str,
-        name: str,
-        case_id: str,
-        claim_id: str = None
-    ) -> Tuple[bool, str, Optional[str]]:
+    self,
+    to_number: str,
+    name: str,
+    case_id: str,
+    claim_id: str = None
+) -> Tuple[bool, str, Optional[str]]:
         """Send verification complete using template"""
         
         display_id = claim_id if claim_id else case_id
         
+        # ✅ LOG WHAT'S BEING SENT
+        logger.info(f"📤 Sending verification_complete template to {to_number}")
+        logger.info(f"   Name: {name}")
+        logger.info(f"   Claim ID: {display_id}")
+        
         # ✅ MATCHES YOUR APPROVED TEMPLATE: verification_complete
         # Variables: {{1}}=name, {{2}}=claim_id
-        # Generate the full template message
         template_message = f"""Dear {name},
 
-        Verification for claim ID {display_id} has been completed successfully.
+    Verification for claim ID {display_id} has been completed successfully.
 
-        Your claim details have been recorded for processing.
+    Your claim details have been recorded for processing.
 
-        If additional documents are required, further communication may be shared regarding the claim process.
+    If additional documents are required, further communication may be shared regarding the claim process.
 
-        Regards,
-        ICS Assure Services Pvt Ltd."""
+    Regards,
+    ICS Assure Services Pvt Ltd."""
 
         body_params = [
             {"type": "text", "text": name},
@@ -281,10 +285,19 @@ class WhatsAppService:
 
         success, msg_id = self.send_template_message(to_number, "verification_complete", body_params)
 
+        # ✅ LOG THE RESULT
         if success:
-            return True, msg_id, template_message
+            logger.info(f"✅ Verification complete template sent successfully! Message ID: {msg_id}")
+        else:
+            logger.error(f"❌ Verification complete template failed!")
+            # Try plain text as fallback
+            logger.info(f"🔄 Falling back to plain text...")
+            success, msg_id = self.send_message(to_number, template_message)
+            if success:
+                logger.info(f"✅ Plain text sent successfully!")
+            else:
+                logger.error(f"❌ Plain text also failed!")
 
-        success, msg_id = self.send_message(to_number, template_message)
         return success, msg_id, template_message
     # ============ SEND CONFIRMATION (Plain Text Fallback) ============
     def send_confirmation(
