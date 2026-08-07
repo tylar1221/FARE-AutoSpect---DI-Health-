@@ -423,18 +423,18 @@ class WhatsAppService:
     name: str,
     case_id: str,
     claim_id: str = None
-) -> Tuple[bool, str, Optional[str]]:  # ← CHANGE TO 3
+) -> Tuple[bool, str, Optional[str]]:
         """Send completion message - tries template first, falls back to plain text"""
         
-        # Try template first
-        success, msg_id, template_message = self.send_verification_complete(  # ← UNPACK 3
+        # Try template first (like send_reminder)
+        success, msg_id, template_message = self.send_verification_complete(
             to_number, name, case_id, claim_id
         )
         
         if success:
-            return True, msg_id, template_message  # ← RETURN 3
+            return True, msg_id, template_message  # ← Return 3 values
         
-        # Fallback to plain text
+        # Fallback to plain text (like send_reminder)
         display_id = claim_id if claim_id else case_id
         
         message = f"""Dear {name},
@@ -448,8 +448,9 @@ class WhatsAppService:
     Regards,
     ICS Assure Services Pvt Ltd."""
         
+        # ✅ Return 3 values (success, msg_id, message)
         success, msg_id = self.send_message(to_number, message)
-        return success, msg_id, message  # ← RETURN 3
+        return success, msg_id, message  # ← 3 values
     
     # ============ SEND CUSTOM MESSAGE ============
     def send_custom_message(
