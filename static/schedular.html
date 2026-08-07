@@ -430,7 +430,7 @@
           <div class="stat-row"><span>📋 Pending</span><span id="statPending">0</span></div>
           <div class="stat-row"><span>📅 Scheduled</span><span id="statScheduled">0</span></div>
           <div class="stat-row"><span>✅ Completed</span><span id="statCompleted">0</span></div>
-          <div class="stat-row"><span>🚫 Non-workable</span><span id="statNonWorkable">0</span></div>
+          <div class="stat-row"><span>🚫 Non-cooperation</span><span id="statNonWorkable">0</span></div>
           <div class="stat-row" style="border-top:2px solid var(--border);margin-top:8px;padding-top:10px;">
             <strong>📊 Total Cases</strong><strong id="statTotal">0</strong>
           </div>
@@ -488,6 +488,42 @@
     </div>
   </div>
   <script>
+    // ========== TIMEZONE HELPERS ==========
+function formatIST(dateStr) {
+    if (!dateStr) return 'N/A';
+    const date = new Date(dateStr);
+    return date.toLocaleString('en-IN', {
+        timeZone: 'Asia/Kolkata',
+        month: 'short',
+        day: 'numeric',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: true
+    });
+}
+
+function formatTimeIST(dateStr) {
+    if (!dateStr) return 'N/A';
+    const date = new Date(dateStr);
+    return date.toLocaleString('en-IN', {
+        timeZone: 'Asia/Kolkata',
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: true
+    });
+}
+
+function formatDateIST(dateStr) {
+    if (!dateStr) return 'N/A';
+    const date = new Date(dateStr);
+    return date.toLocaleDateString('en-IN', {
+        timeZone: 'Asia/Kolkata',
+        month: 'short',
+        day: 'numeric',
+        year: 'numeric'
+    });
+}
     // ========== CONFIG ==========
     const API_BASE = window.location.origin;
     let allCases = [];
@@ -1058,7 +1094,7 @@ allCases.forEach(c => {
               <div class="msg-conversation-body" id="body-${conv.phone}">
                 <div class="chat-bubble-wrap" style="max-height:400px;overflow-y:auto;">
                   ${conv.messages.map(msg => {
-                    const timeStr = new Date(msg.sent_at || msg.received_at).toLocaleString('en-IN', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit', hour12: true });
+                    const timeStr = formatIST(msg.sent_at || msg.received_at);
                     let text = escapeHtml(msg.message_body || '');
                     let bubbleClass = 'bubble';
                     let extraStyle = '';
@@ -1328,10 +1364,12 @@ allCases.forEach(c => {
     });
 
     // ========== INIT ==========
-    document.getElementById('todayDate').textContent = new Date().toLocaleDateString('en-IN', {
-      weekday: 'short',
-      month: 'short',
-      day: 'numeric'
+    const today = new Date();
+    document.getElementById('todayDate').textContent = today.toLocaleDateString('en-IN', {
+        timeZone: 'Asia/Kolkata',
+        weekday: 'short',
+        month: 'short',
+        day: 'numeric'
     });
 
     fetchCases();
