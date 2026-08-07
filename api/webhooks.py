@@ -471,7 +471,8 @@ async def handle_media_message(from_number: str, media_type: str, media_id: str,
                 file_name=filename,
                 file_url=file_url,
                 file_type=media_type,
-                source="whatsapp"
+                source="whatsapp",
+                user_id=case.user_id
             )
             db.add(document)
             
@@ -489,7 +490,7 @@ async def handle_media_message(from_number: str, media_type: str, media_id: str,
                 message_body=message_body,
                 message_type=media_type,
                 status="received",
-                 message_id=message_id,  # ← 🔥 ADD THIS!
+                message_id=message_id,  # ← 🔥 ADD THIS!
                 is_incoming=True,
                 is_read=False
             )
