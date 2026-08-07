@@ -491,7 +491,10 @@
     // ========== TIMEZONE HELPERS ==========
 function formatIST(dateStr) {
     if (!dateStr) return 'N/A';
-    const date = new Date(dateStr);
+    
+    // Parse as UTC explicitly
+    const date = new Date(dateStr + 'Z');  // ← Add 'Z' to mark as UTC
+    
     return date.toLocaleString('en-IN', {
         timeZone: 'Asia/Kolkata',
         month: 'short',
@@ -505,7 +508,10 @@ function formatIST(dateStr) {
 
 function formatTimeIST(dateStr) {
     if (!dateStr) return 'N/A';
-    const date = new Date(dateStr);
+    
+    // Parse as UTC explicitly
+    const date = new Date(dateStr + 'Z');  // ← Add 'Z'
+    
     return date.toLocaleString('en-IN', {
         timeZone: 'Asia/Kolkata',
         hour: '2-digit',
@@ -516,7 +522,10 @@ function formatTimeIST(dateStr) {
 
 function formatDateIST(dateStr) {
     if (!dateStr) return 'N/A';
-    const date = new Date(dateStr);
+    
+    // Parse as UTC explicitly
+    const date = new Date(dateStr + 'Z');  // ← Add 'Z'
+    
     return date.toLocaleDateString('en-IN', {
         timeZone: 'Asia/Kolkata',
         month: 'short',
