@@ -630,16 +630,20 @@ async def upload_case_file(
     case_id: str,
     file: UploadFile = File(...),
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user)  # ← ADD THIS
-
+    current_user: User = Depends(get_current_user)
 ):
-    """Upload a file for a case (uses configured storage)"""
+    """Upload a file for a case - saves to documents/ subfolder"""
     
-    # Verify case exists
-    result = await db.execute(select(DICase).where(DICase.case_id == case_id))
+    # Verify case exists and user has permission
+    query = select(DICase).where(DICase.case_id == case_id)
+    if current_user.role != "administrator":
+        query = query.where(DICase.user_id == current_user.id)
+    
+    result = await db.execute(query)
     case = result.scalar_one_or_none()
+    
     if not case:
-        raise HTTPException(404, f"Case {case_id} not found")
+        raise HTTPException(404, f"Case {case_id} not found or you don't have permission")
     
     # Read file content
     file_content = await file.read()
@@ -647,19 +651,42 @@ async def upload_case_file(
     # Get storage service
     storage = StorageFactory.get_storage_service()
     
-    # Get existing folder_id if using Google Drive
+    # ========== FIX: Upload to documents/ subfolder ==========
     folder_id = None
-    if settings.STORAGE_TYPE == "google_drive" and case.drive_link:
-        match = re.search(r'folders/([a-zA-Z0-9_-]+)', case.drive_link)
-        if match:
-            folder_id = match.group(1)
+    
+    if settings.STORAGE_TYPE == "google_drive":
+        try:
+            from services.drive_storage import DriveStorageService
+            drive = DriveStorageService()
+            
+            # 1. Find the case folder
+            case_folder = drive.drive.find_case_folder(case_id)
+            
+            if case_folder:
+                # 2. Get or create "documents" subfolder
+                documents_folder_id = drive.drive.get_or_create_subfolder(
+                    case_folder['folder_id'], 
+                    "documents"
+                )
+                folder_id = documents_folder_id
+                print(f"📁 Uploading to documents subfolder: {folder_id}")
+            else:
+                print(f"⚠️ Case folder not found for {case_id}")
+                
+        except Exception as e:
+            print(f"⚠️ Error getting documents folder: {e}")
+            # Fallback: use case root
+            if case.drive_link:
+                match = re.search(r'folders/([a-zA-Z0-9_-]+)', case.drive_link)
+                if match:
+                    folder_id = match.group(1)
     
     # Save file
     try:
         file_url = await storage.save_file(
             file_content=file_content,
             file_name=file.filename,
-            folder_id=folder_id,
+            folder_id=folder_id,  # Now this is documents/ subfolder!
             file_type=file.content_type or 'application/octet-stream',
             case_id=case_id
         )
@@ -682,11 +709,17 @@ async def upload_case_file(
         file_type=file.content_type.split('/')[0] if file.content_type else 'document',
         source="registration",
         user_id=current_user.id
-
     )
     
     db.add(new_doc)
     await db.commit()
+    await db.refresh(new_doc)
+    
+    await push_log({
+        "type": "document_uploaded",
+        "message": f"Document uploaded for case {case_id}: {file.filename}",
+        "data": {"case_id": case_id, "file_name": file.filename}
+    })
     
     return {
         "message": "File uploaded successfully",

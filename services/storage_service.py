@@ -68,7 +68,7 @@ class LocalStorageService(StorageService):
 
 
 class GoogleDriveStorageService(StorageService):
-    """Store files on Google Drive"""
+    """Store files on Google Drive - FIXED to use subfolders"""
     
     def __init__(self):
         from services.drive_storage import DriveStorageService
@@ -77,14 +77,21 @@ class GoogleDriveStorageService(StorageService):
     
     async def save_file(self, file_content: bytes, file_name: str, 
                         folder_id: str = None, **kwargs) -> str:
+        """
+        Save file to Google Drive
+        - If case_id is provided, saves to case folder > subfolder
+        - If folder_id is provided, saves directly to that folder
+        """
+        # Pass all kwargs to drive_storage (includes case_id, file_type)
         return await self.drive_storage.save_file(
             file_content=file_content,
             file_name=file_name,
             folder_id=folder_id,
-            **kwargs
+            **kwargs  # ← KEY: Passes case_id and file_type
         )
     
     async def delete_file(self, file_url: str) -> bool:
+        """Delete file from Google Drive"""
         import re
         match = re.search(r'/file/d/([a-zA-Z0-9_-]+)', file_url)
         if match:

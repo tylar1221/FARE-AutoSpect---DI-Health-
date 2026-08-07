@@ -1,82 +1,127 @@
 # services/drive_storage.py
-"""
-Google Drive Storage Service - Wrapper for easy integration
-"""
-
 import os
 import tempfile
-from typing import Optional, Dict
+from typing import Optional, Dict, Any
 from services.google_drive_service import GoogleDriveService
-from app.config import settings
 
 class DriveStorageService:
-    """Storage service using Google Drive"""
+    """Handles file operations with Google Drive"""
     
     def __init__(self):
         self.drive = GoogleDriveService()
-        print("✅ Google Drive Storage Service initialized")
-    
-    async def create_case_folder(self, case_id: str, case_data: dict) -> Optional[Dict]:
-        """Create a folder for a case in Google Drive"""
-        result = self.drive.create_case_folder(case_id, case_data)
-        return result
+        print("✅ DriveStorageService initialized")
     
     async def save_file(self, file_content: bytes, file_name: str, 
-                        folder_id: str = None, **kwargs) -> str:
+                    folder_id: str = None, **kwargs) -> str:
         """
-        Save a file to Google Drive case folder
-        Returns: Drive file URL
+        Save file to Google Drive
+        
+        Args:
+            file_content: Binary file content
+            file_name: Name of the file
+            folder_id: Specific folder ID (optional) - can be subfolder!
+            **kwargs: Additional args (case_id, file_type, etc.)
         """
-        file_type = kwargs.get('file_type', 'application/octet-stream')
-        case_id = kwargs.get('case_id', None)
-        
-        # Create temporary file
-        with tempfile.NamedTemporaryFile(delete=False, suffix=f"_{file_name}") as temp_file:
-            temp_file.write(file_content)
-            temp_path = temp_file.name
-        
         try:
-            # If no folder_id provided, try to find or create one
-            if not folder_id and case_id:
-                folder_info = await self.get_case_folder(case_id)
-                if folder_info:
-                    folder_id = folder_info.get('folder_id')
+            case_id = kwargs.get('case_id')
+            file_type = kwargs.get('file_type', 'document')
             
-            # Upload to Google Drive
+            # Determine target folder
+            target_folder_id = folder_id
+            
+            # If no folder_id provided, use case_id to find/create
+            if not target_folder_id and case_id:
+                # Find or create case folder
+                case_folder = self.drive.find_case_folder(case_id)
+                if not case_folder:
+                    # Get case data from database
+                    case_data = await self._get_case_data(case_id)
+                    if not case_data:
+                        raise ValueError(f"Case {case_id} not found")
+                    case_folder = self.drive.create_case_folder(case_id, case_data)
+                
+                # For WhatsApp files, use whatsapp/ subfolder
+                # For website uploads, folder_id is already set to documents/
+                if not folder_id:
+                    subfolder_name = 'whatsapp'  # Default for WhatsApp
+                    target_folder_id = await self._get_or_create_subfolder(
+                        case_folder['folder_id'], 
+                        subfolder_name
+                    )
+                else:
+                    # folder_id already provided (e.g., documents/ subfolder)
+                    target_folder_id = folder_id
+            
+            if not target_folder_id:
+                raise ValueError("No target folder specified")
+            
+            # Save temp file
+            with tempfile.NamedTemporaryFile(delete=False, suffix=f"_{file_name}") as tmp:
+                tmp.write(file_content)
+                tmp_path = tmp.name
+            
+            # Upload to Drive
             result = self.drive.upload_file_to_folder(
-                folder_id=folder_id,
-                file_path=temp_path,
-                file_name=file_name,
-                mime_type=file_type  # ✅ Now passing mime_type
+                folder_id=target_folder_id,
+                file_path=tmp_path,
+                file_name=file_name
             )
             
-            if result:
-                return result.get('file_link', '')
-            else:
-                raise Exception("Upload failed")
-                
-        finally:
-            if os.path.exists(temp_path):
-                os.remove(temp_path)
-    
-    async def get_case_folder(self, case_id: str) -> Optional[Dict]:
-        """Get existing folder for a case"""
-        folder_info = self.drive.find_case_folder(case_id)
-        return folder_info
+            # Cleanup
+            os.unlink(tmp_path)
+            
+            return result['file_link']
+            
+        except Exception as e:
+            print(f"❌ DriveStorage error: {e}")
+            raise
     
     async def delete_file(self, file_id: str) -> bool:
         """Delete a file from Google Drive"""
         try:
             self.drive.service.files().delete(fileId=file_id).execute()
+            print(f"🗑️ Deleted file: {file_id}")
             return True
         except Exception as e:
-            print(f"Error deleting file: {e}")
+            print(f"❌ Delete error: {e}")
             return False
     
-    async def get_folder_contents(self, folder_id: str) -> list:
-        """Get all files in a folder"""
-        return self.drive.list_folder_contents(folder_id)
+    def _get_subfolder_name(self, file_type: str) -> str:
+        """✅ ALL WhatsApp files go to whatsapp folder"""
+        # Everything from WhatsApp goes to whatsapp/
+        return 'whatsapp'
     
-    async def make_folder_public(self, folder_id: str) -> bool:
-        """Make a folder publicly accessible"""
-        return self.drive.make_folder_public(folder_id)
+    async def _get_or_create_subfolder(self, parent_folder_id: str, subfolder_name: str) -> str:
+        """Find existing subfolder or create new one"""
+        # List all contents
+        contents = self.drive.list_folder_contents(parent_folder_id)
+        
+        # Look for subfolder
+        for item in contents:
+            if (item['mimeType'] == 'application/vnd.google-apps.folder' and 
+                item['name'] == subfolder_name):
+                return item['id']
+        
+        # Create if not exists
+        subfolder = self.drive.create_subfolder(parent_folder_id, subfolder_name)
+        return subfolder['folder_id']
+    
+    async def _get_case_data(self, case_id: str) -> Optional[Dict]:
+        """Fetch case data from database"""
+        from sqlalchemy.ext.asyncio import AsyncSession
+        from sqlalchemy import select
+        from app.database import get_db
+        from app.models import DICase
+        
+        async for db in get_db():
+            result = await db.execute(
+                select(DICase).where(DICase.case_id == case_id)
+            )
+            case = result.scalars().first()
+            if case:
+                return {
+                    'name': case.name,
+                    'phone_number': case.phone_number,
+                    'claim_id': case.claim_id
+                }
+        return None

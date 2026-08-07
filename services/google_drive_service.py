@@ -45,7 +45,64 @@ class GoogleDriveService:
         except Exception as e:
             print(f"❌ Drive authentication failed: {e}")
             return False
-    
+    def find_subfolder(self, parent_folder_id: str, subfolder_name: str) -> Optional[str]:
+        """Find a subfolder by name inside parent folder"""
+        try:
+            query = (
+                f"name='{subfolder_name}' "
+                f"and '{parent_folder_id}' in parents "
+                f"and mimeType='application/vnd.google-apps.folder' "
+                f"and trashed=false"
+            )
+            
+            results = self.service.files().list(
+                q=query,
+                spaces='drive',
+                fields='files(id, name)',
+                pageSize=10
+            ).execute()
+            
+            files = results.get('files', [])
+            
+            if files:
+                return files[0].get('id')
+            return None
+            
+        except Exception as e:
+            print(f"❌ Error finding subfolder: {e}")
+            return None
+
+
+
+
+    def get_or_create_subfolder(self, parent_folder_id: str, subfolder_name: str) -> Optional[str]:
+        """Get existing subfolder or create new one"""
+        try:
+            # First try to find existing
+            subfolder_id = self.find_subfolder(parent_folder_id, subfolder_name)
+            if subfolder_id:
+                print(f"✓ Found existing subfolder: {subfolder_name}")
+                return subfolder_id
+            
+            # Create new subfolder
+            folder_metadata = {
+                'name': subfolder_name,
+                'mimeType': 'application/vnd.google-apps.folder',
+                'parents': [parent_folder_id]
+            }
+            
+            folder = self.service.files().create(
+                body=folder_metadata,
+                fields='id, webViewLink'
+            ).execute()
+            
+            folder_id = folder.get('id')
+            print(f"✅ Created subfolder: {subfolder_name}")
+            return folder_id
+            
+        except Exception as e:
+            print(f"❌ Error creating subfolder: {e}")
+            return None
     def make_folder_public(self, folder_id: str) -> bool:
         """Make a Google Drive folder publicly accessible."""
         try:

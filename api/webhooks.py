@@ -389,7 +389,7 @@ async def handle_media_message(from_number: str, media_type: str, media_id: str,
     from sqlalchemy import select
     from app.database import get_db
     from app.models import DICase, CaseDocument, WhatsAppMessage
-    from services.storage_service import StorageFactory
+    from services.storage_factory import StorageFactory
     from services.whatsapp_service import get_whatsapp_service
     import os
     
@@ -421,11 +421,12 @@ async def handle_media_message(from_number: str, media_type: str, media_id: str,
             filename = f"{media_type}_{timestamp}{extension}"
         
         try:
+            # ✅ FIX: Pass file_type and case_id to storage
             file_url = await storage.save_file(
                 file_content=file_content,
                 file_name=filename,
-                file_type=media_type,
-                case_id=case.case_id
+                file_type=media_type,     # ← KEY: Determines subfolder
+                case_id=case.case_id      # ← KEY: Finds case folder
             )
             
             # Save to database
@@ -463,7 +464,6 @@ async def handle_media_message(from_number: str, media_type: str, media_id: str,
             await db.rollback()
         
         break
-
 
 # ============ HANDLE LOCATION MESSAGES ============
 async def handle_location_message(from_number: str, latitude: float, longitude: float, 
