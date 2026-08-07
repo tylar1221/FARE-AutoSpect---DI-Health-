@@ -405,24 +405,7 @@
                 </button>
             </form>
 
-            <!-- Demo Credentials -->
-            <div class="demo-credentials">
-                <div class="demo-title">
-                    <i class="bi bi-bug"></i> Demo Access
-                </div>
-                <div class="demo-cards">
-                    <div class="demo-card" onclick="fillCredentials('admin', 'admin123')">
-                        <div class="demo-username">admin</div>
-                        <div class="demo-password">•••••••</div>
-                        <span class="demo-badge">Administrator</span>
-                    </div>
-                    <div class="demo-card" onclick="fillCredentials('investigator', 'invest123')">
-                        <div class="demo-username">investigator</div>
-                        <div class="demo-password">•••••••</div>
-                        <span class="demo-badge">Investigator</span>
-                    </div>
-                </div>
-            </div>
+            
 
             <div class="login-footer">
                 <i class="bi bi-shield-lock"></i> Secure encrypted connection
@@ -443,12 +426,7 @@
         });
 
         // Fill demo credentials
-        function fillCredentials(username, password) {
-            document.getElementById('username').value = username;
-            document.getElementById('password').value = password;
-            // Optional: auto-submit
-            // document.getElementById('loginForm').dispatchEvent(new Event('submit'));
-        }
+    
 
         // Handle login
         document.getElementById('loginForm').addEventListener('submit', async (e) => {
