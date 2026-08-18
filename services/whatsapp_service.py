@@ -116,18 +116,40 @@ class WhatsAppService:
         except Exception as e:
             logger.error(f"❌ Template error: {e}")
             return False, ""
-    
+    def _extract_meeting_id(self, meeting_link: str) -> str:
+        """Extract meeting ID from Google Meet URL"""
+        # Handle URLs like:
+        # https://meet.google.com/abc-defg-hij
+        # https://meet.google.com/abc-defg-hij?some=param
+        
+        if not meeting_link:
+            return ""
+        
+        # Remove trailing slashes
+        meeting_link = meeting_link.rstrip('/')
+        
+        # Extract the ID from the URL
+        if 'meet.google.com/' in meeting_link:
+            # Get everything after the last '/'
+            parts = meeting_link.split('meet.google.com/')
+            if len(parts) > 1:
+                # Get the ID (remove query parameters if any)
+                meeting_id = parts[1].split('?')[0]
+                return meeting_id
+        
+        # Fallback: try to extract from URL
+        return meeting_link.split('/')[-1].split('?')[0]
     # ============ TEMPLATE: BOOKING CONFIRMATION ============
     def send_booking_confirmation(
-        self,
-        to_number: str,
-        case_id: str,
-        name: str,
-        meeting_date: datetime,
-        meeting_link: str,
-        drive_link: str = None,
-        claim_id: str = None
-    ) -> Tuple[bool, str, Optional[str]]:
+    self,
+    to_number: str,
+    case_id: str,
+    name: str,
+    meeting_date: datetime,
+    meeting_link: str,
+    drive_link: str = None,
+    claim_id: str = None
+) -> Tuple[bool, str, Optional[str]]:
         """Send booking confirmation using template"""
         
         from datetime import timezone, timedelta
@@ -142,42 +164,44 @@ class WhatsAppService:
         
         display_id = claim_id if claim_id else case_id
         
-        # ✅ MATCHES YOUR APPROVED TEMPLATE: booking_confirmation
-        # Variables: {{1}}=name, {{2}}=claim_id, {{3}}=date, {{4}}=time, {{5}}=meet_link
-        # Generate the full template message
-        template_message = f"""Dear {name},
-
-        Your desktop verification call has been scheduled on behalf of the insurance company.
-
-        Claim No: {display_id}
-        Date: {formatted_date}
-        Time: {formatted_time}
-
-        Meeting Link: {meeting_link}
-
-        Please keep the following documents ready:
-        - Driving License of actual rider/driver at time of incident
-        - ID Proof
-        - RC Copy
-        - Medical papers/injury photographs if any
-        - Accident spot photographs
-        - FIR/MCR/GD if available
-
-        Kindly join 5 minutes before the scheduled time.
-
-        Regards,
-        Desktop Verification Team
-        ICS Assure Services Pvt Ltd."""
-
+        # ✅ NEW: Extract only the meeting ID for the template
+        meeting_id = self._extract_meeting_id(meeting_link)
+        
+        # ✅ CORRECT: Sending only meeting ID as {{5}}
         body_params = [
-            {"type": "text", "text": name},
-            {"type": "text", "text": display_id},
-            {"type": "text", "text": formatted_date},
-            {"type": "text", "text": formatted_time},
-            {"type": "text", "text": meeting_link}
+            {"type": "text", "text": name},           # {{1}}
+            {"type": "text", "text": display_id},     # {{2}}
+            {"type": "text", "text": formatted_date}, # {{3}}
+            {"type": "text", "text": formatted_time}, # {{4}}
+            {"type": "text", "text": meeting_id}      # {{5}} ← ONLY MEETING ID!
         ]
 
         success, msg_id = self.send_template_message(to_number, "booking_confirmation", body_params)
+
+        # ✅ Also update the fallback message to use the full URL (not template)
+        template_message = f"""Dear {name},
+
+    Your desktop verification call has been scheduled on behalf of the insurance company.
+
+    Claim No: {display_id}
+    Date: {formatted_date}
+    Time: {formatted_time}
+
+    Meeting Link: {meeting_link}
+
+    Please keep the following documents ready:
+    - Driving License of actual rider/driver at time of incident
+    - ID Proof
+    - RC Copy
+    - Medical papers/injury photographs if any
+    - Accident spot photographs
+    - FIR/MCR/GD if available
+
+    Kindly join 5 minutes before the scheduled time.
+
+    Regards,
+    Desktop Verification Team
+    ICS Assure Services Pvt Ltd."""
 
         if success:
             return True, msg_id, template_message
@@ -301,15 +325,15 @@ class WhatsAppService:
         return success, msg_id, template_message
     # ============ SEND CONFIRMATION (Plain Text Fallback) ============
     def send_confirmation(
-        self,
-        to_number: str,
-        case_id: str,
-        name: str,
-        meeting_date: datetime,
-        meeting_link: str,
-        drive_link: str = None,
-        claim_id: str = None
-    ) -> Tuple[bool, str]:
+    self,
+    to_number: str,
+    case_id: str,
+    name: str,
+    meeting_date: datetime,
+    meeting_link: str,
+    drive_link: str = None,
+    claim_id: str = None
+) -> Tuple[bool, str]:
         """Send booking confirmation - tries template first, falls back to plain text"""
         
         # Try template first
@@ -320,7 +344,7 @@ class WhatsAppService:
         if success:
             return True, msg_id
         
-        # Fallback to plain text
+        # Fallback to plain text (same as before - uses FULL URL)
         from datetime import timezone, timedelta
         IST = timezone(timedelta(hours=5, minutes=30))
         
@@ -333,7 +357,7 @@ class WhatsAppService:
         
         display_id = claim_id if claim_id else case_id
         
-        # ✅ MATCHES YOUR TEMPLATE FORMAT
+        # This uses the FULL URL (correct for fallback)
         message = f"""Dear {name},
 
     Your desktop verification call has been scheduled on behalf of the insurance company.
