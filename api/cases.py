@@ -29,13 +29,20 @@ from services.storage_service import StorageFactory
 face_executor = ThreadPoolExecutor(max_workers=1)
 
 # ✅ Import DriveStorageService only if using Google Drive
+# ✅ Import DriveStorageService
+from services.drive_storage import DriveStorageService
+
+# Initialize drive storage (works for both Google Drive and Local)
+drive_storage = None
 if settings.STORAGE_TYPE == "google_drive":
-    from services.drive_storage import DriveStorageService
-    drive_storage = DriveStorageService()
-    print("📁 Using Google Drive storage")
+    try:
+        drive_storage = DriveStorageService()
+        print("📁 Using Google Drive storage")
+    except Exception as e:
+        print(f"⚠️ Drive storage init error: {e}")
+        drive_storage = None
 else:
-    drive_storage = None
-    print("💾 Using Local storage")
+    print("💾 Using Local storage (Drive folder creation will use local folders)")
 
 router = APIRouter(prefix="/api/cases", tags=["Cases"])
 
@@ -294,9 +301,10 @@ async def create_case(
     })
     
     # ✅ Create folder (NO MOCK FALLBACK)
+    # ✅ Create folder
     folder_link = None
-    
-    if settings.STORAGE_TYPE == "google_drive":
+
+    if settings.STORAGE_TYPE == "google_drive" and drive_storage:
         try:
             # Use REAL Drive Storage
             folder_info = await drive_storage.create_case_folder(
@@ -306,12 +314,15 @@ async def create_case(
             if folder_info:
                 folder_link = folder_info.get('drive_link')
                 print(f"✅ Created Google Drive folder: {folder_link}")
+            else:
+                print(f"⚠️ Drive folder creation returned None for {case_id}")
         except Exception as e:
-            print(f"⚠️ Failed to create Drive folder: {e}")
-            # ⚠️ No mock fallback - just log and continue
-            # The case will still be created without a drive link
+            print(f"❌ Failed to create Drive folder for {case_id}: {e}")
+            import traceback
+            traceback.print_exc()
+            # Don't fail the case creation - just log the error
     else:
-        # ✅ Create local folder instead of using mock
+        # ✅ Create local folder
         try:
             case_folder = os.path.join("uploads", case_id)
             os.makedirs(case_folder, exist_ok=True)
@@ -654,32 +665,60 @@ async def upload_case_file(
     # ========== FIX: Upload to documents/ subfolder ==========
     folder_id = None
     
-    if settings.STORAGE_TYPE == "google_drive":
+    # ✅ FIX: Use consistent drive_storage variable
+    folder_id = None
+
+    if settings.STORAGE_TYPE == "google_drive" and drive_storage:
         try:
-            from services.drive_storage import DriveStorageService
-            drive = DriveStorageService()
-            
+            # Use the existing drive_storage instance
             # 1. Find the case folder
-            case_folder = drive.drive.find_case_folder(case_id)
+            case_folder = drive_storage.drive.find_case_folder(case_id)
             
             if case_folder:
                 # 2. Get or create "documents" subfolder
-                documents_folder_id = drive.drive.get_or_create_subfolder(
+                documents_folder_id = drive_storage.drive.get_or_create_subfolder(
                     case_folder['folder_id'], 
                     "documents"
                 )
                 folder_id = documents_folder_id
                 print(f"📁 Uploading to documents subfolder: {folder_id}")
             else:
-                print(f"⚠️ Case folder not found for {case_id}")
+                # Folder doesn't exist - create it first
+                print(f"⚠️ Case folder not found for {case_id}, creating now...")
+                folder_info = await drive_storage.create_case_folder(
+                    case_id=case_id,
+                    case_data={"name": case.name}
+                )
+                if folder_info:
+                    # Update case with drive link
+                    await db.execute(
+                        update(DICase)
+                        .where(DICase.case_id == case_id)
+                        .values(drive_link=folder_info.get('drive_link'))
+                    )
+                    await db.commit()
+                    
+                    # Now get the documents subfolder
+                    case_folder = drive_storage.drive.find_case_folder(case_id)
+                    if case_folder:
+                        documents_folder_id = drive_storage.drive.get_or_create_subfolder(
+                            case_folder['folder_id'], 
+                            "documents"
+                        )
+                        folder_id = documents_folder_id
+                else:
+                    print(f"❌ Failed to create Drive folder for {case_id}")
                 
         except Exception as e:
             print(f"⚠️ Error getting documents folder: {e}")
+            import traceback
+            traceback.print_exc()
             # Fallback: use case root
             if case.drive_link:
                 match = re.search(r'folders/([a-zA-Z0-9_-]+)', case.drive_link)
                 if match:
                     folder_id = match.group(1)
+                    print(f"📁 Using fallback folder ID: {folder_id}")
     
     # Save file
     try:
@@ -820,3 +859,73 @@ async def get_case_stats(
         "created_at": case.created_at,
         "updated_at": case.updated_at
     }
+# ============ DEBUG: TEST DRIVE FOLDER CREATION ============
+@router.post("/{case_id}/create-drive-folder")
+async def create_drive_folder_manually(
+    case_id: str,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Manually create a Google Drive folder for a case (for debugging)
+    """
+    # Verify case exists
+    query = select(DICase).where(DICase.case_id == case_id)
+    if current_user.role != "administrator":
+        query = query.where(DICase.user_id == current_user.id)
+    
+    result = await db.execute(query)
+    case = result.scalar_one_or_none()
+    
+    if not case:
+        raise HTTPException(404, f"Case {case_id} not found or you don't have permission")
+    
+    # Check if already exists
+    if case.drive_link:
+        return {
+            "success": True,
+            "message": "Drive folder already exists",
+            "drive_link": case.drive_link
+        }
+    
+    # Create folder
+    if settings.STORAGE_TYPE == "google_drive" and drive_storage:
+        try:
+            folder_info = await drive_storage.create_case_folder(
+                case_id=case_id,
+                case_data={
+                    "name": case.name,
+                    "phone_number": case.phone_number,
+                    "category": case.category
+                }
+            )
+            
+            if folder_info:
+                # Update case with drive link
+                await db.execute(
+                    update(DICase)
+                    .where(DICase.case_id == case_id)
+                    .values(drive_link=folder_info.get('drive_link'))
+                )
+                await db.commit()
+                
+                return {
+                    "success": True,
+                    "message": "Drive folder created successfully",
+                    "drive_link": folder_info.get('drive_link')
+                }
+            else:
+                return {
+                    "success": False,
+                    "message": "Failed to create Drive folder - returned None"
+                }
+        except Exception as e:
+            return {
+                "success": False,
+                "message": f"Error creating Drive folder: {str(e)}"
+            }
+    else:
+        return {
+            "success": False,
+            "message": f"Drive storage not available. STORAGE_TYPE={settings.STORAGE_TYPE}, drive_storage={drive_storage is not None}"
+        }
