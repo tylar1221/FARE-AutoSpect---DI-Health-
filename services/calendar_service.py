@@ -192,7 +192,7 @@ class CalendarService:
             created = self.service.events().insert(
                 calendarId=self.calendar_id,  # ← Uses user-specific calendar
                 body=event,
-                conferenceDataVersion=1,
+                conferenceDataVersion=0,
             ).execute()
             
             meet_link = created.get("hangoutLink")
