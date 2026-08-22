@@ -929,3 +929,58 @@ async def create_drive_folder_manually(
             "success": False,
             "message": f"Drive storage not available. STORAGE_TYPE={settings.STORAGE_TYPE}, drive_storage={drive_storage is not None}"
         }
+@router.get("/cases/{case_id}/recordings")
+async def get_case_recordings(
+    case_id: str,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """Get all meeting recordings for a case"""
+    from sqlalchemy import text
+    
+    # Verify case belongs to user
+    query = select(DICase).where(DICase.case_id == case_id)
+    if current_user.role != "administrator":
+        query = query.where(DICase.user_id == current_user.id)
+    
+    result = await db.execute(query)
+    case = result.scalars().first()
+    
+    if not case:
+        raise HTTPException(404, "Case not found or no permission")
+    
+    # Get recordings from health_case_recordings table
+    recordings_result = await db.execute(
+        text("""
+            SELECT 
+                id,
+                file_name,
+                file_url,
+                drive_file_id,
+                uploaded_at,
+                processing_status
+            FROM health_case_recordings
+            WHERE case_id = :case_id
+            ORDER BY uploaded_at DESC
+        """),
+        {"case_id": case_id}
+    )
+    
+    recordings = recordings_result.all()
+    
+    return {
+        "success": True,
+        "case_id": case_id,
+        "recordings": [
+            {
+                "id": r.id,
+                "file_name": r.file_name,
+                "file_url": r.file_url,
+                "drive_file_id": r.drive_file_id,
+                "uploaded_at": r.uploaded_at.isoformat() if r.uploaded_at else None,
+                "processing_status": r.processing_status
+            }
+            for r in recordings
+        ],
+        "count": len(recordings)
+    }
